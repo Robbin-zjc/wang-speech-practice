@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>老王口才深度演练 · 320篇原话朗读库</title>
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { padding-bottom: env(safe-area-inset-bottom); -webkit-tap-highlight-color: transparent; user-select: text; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    [v-cloak] { display: none; }
+    .article-body h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #818cf8;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    .article-body p {
+      margin-bottom: 1rem;
+      line-height: 1.9;
+    }
+    .article-body hr {
+      border: 0;
+      height: 1px;
+      background: rgba(148, 163, 184, 0.15);
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white">
+<div id="app" v-cloak class="flex-1 flex flex-col max-w-2xl w-full mx-auto pb-28">
+
+  <!-- 顶部状态栏 -->
+  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-indigo-600/30">
+        王
+      </div>
+      <div>
+        <div class="flex items-center space-x-1.5">
+          <h1 class="font-bold text-base tracking-wide text-white">老王原话朗读库</h1>
+          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">320篇 · 10~20分钟长篇</span>
+        </div>
+        <p class="text-[11px] text-slate-400">保留完整思维流动 · 拒绝干瘪精简</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <button @click="showStatsModal = true" class="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-indigo-300 active:scale-95 transition shadow-sm">
+        <span>🔥</span>
+        <span class="font-bold">{{ streakDays }}天</span>
+        <span class="text-slate-600">|</span>
+        <span>已练{{ totalPracticeCount }}次</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 搜索栏 -->
+  <section class="px-4 pt-3 pb-1 bg-slate-900/40 border-b border-slate-800/40">
+    <div class="relative">
+      <input 
+        v-model="searchQuery" 
+        type="text" 
+        placeholder="🔍 搜索 320 篇讲稿（如：成熟、合伙人、搞钱、嫉妒、执行力）..." 
+        class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500">
+      <button 
+        v-if="searchQuery" 
+        @click="searchQuery = ''" 
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white">
+        ✕
+      </button>
+    </div>
+  </section>
+
+  <!-- 标签维度筛选器（重点支持：定义类、心法类、底层逻辑类等） -->
+  <section class="px-4 pt-2.5 pb-1 bg-slate-900/20">
+    <div class="flex items-center space-x-1.5 mb-1.5 text-xs text-slate-400">
+      <span class="font-semibold text-indigo-400">🏷️ 标签维度：</span>
+      <span class="text-[11px] text-slate-500">（快速聚焦定义/心法/案例）</span>
+    </div>
+    <div class="flex space-x-2 overflow-x-auto no-scrollbar py-1 text-xs">
+      <button
+        v-for="tag in allTags"
+        :key="tag"
+        @click="activeTag = tag; page = 1"
+        :class="['px-3 py-1 rounded-lg whitespace-nowrap transition-all font-medium text-xs flex items-center space-x-1',
+          activeTag === tag
+            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/40 font-semibold'
+            : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60']">
+        <span>#{{ tag }}</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 主题分类滑动筛选器 -->
+  <section class="px-4 py-2 bg-slate-950 border-b border-slate-800/60">
+    <div class="flex space-x-2 overflow-x-auto no-scrollbar py-1 text-xs">
+      <button
+        v-for="cat in categories"
+        :key="cat"
+        @click="activeCategory = cat; page = 1"
+        :class="['px-3 py-1.5 rounded-full whitespace-nowrap transition-all font-medium text-xs',
+          activeCategory === cat
+            ? 'bg-slate-700 text-white font-semibold border border-slate-600'
+            : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800/80']">
+        {{ cat }}
+      </button>
+    </div>
+  </section>
+
+  <!-- 语料列表页 Tab -->
+  <main v-if="currentTab === 'corpus'" class="flex-1 px-4 py-3 space-y-5">
+    
+    <!-- 筛选结果统计提示 -->
+    <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+      <span>找到 <strong class="text-indigo-400">{{ filteredCorpus.length }}</strong> 篇匹配讲稿</span>
+      <span v-if="filteredCorpus.length > pageSize">当前展示前 {{ Math.min(page * pageSize, filteredCorpus.length) }} 篇</span>
+    </div>
+
+    <div v-if="filteredCorpus.length === 0" class="py-20 text-center text-slate-500">
+      <p class="text-3xl mb-2">📭</p>
+      <p class="text-sm">未找到匹配的讲稿</p>
+      <button @click="resetFilter" class="mt-3 text-xs text-indigo-400 underline">重置所有筛选</button>
+    </div>
+
+    <!-- 朗读稿长篇卡片流（分页懒加载展示） -->
+    <article
+      v-for="item in displayedCorpus"
+      :key="item.id"
+      class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800/90 shadow-md transition hover:border-slate-700 relative flex flex-col justify-between">
+
+      <div>
+        <div class="flex items-center justify-between text-xs mb-2.5 flex-wrap gap-1.5">
+          <div class="flex items-center space-x-1.5">
+            <span class="px-2.5 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-medium text-[11px]">
+              {{ item.category }}
+            </span>
+            <span class="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800/40 text-[11px] font-semibold flex items-center space-x-1">
+              <span>⏱</span>
+              <span>{{ item.readingMinutes }} ({{ item.wordCount }}字)</span>
+            </span>
+          </div>
+          <span class="text-slate-400 text-[11px] truncate max-w-[180px]">
+            📍 {{ item.source }}
+          </span>
+        </div>
+
+        <!-- 标签徽章流 -->
+        <div class="flex flex-wrap gap-1.5 mb-2.5">
+          <span 
+            v-for="t in item.tags" 
+            :key="t"
+            @click="activeTag = t; page = 1"
+            :class="['text-[10px] px-2 py-0.5 rounded-full cursor-pointer transition',
+              t === '定义类' ? 'bg-rose-950/80 text-rose-300 border border-rose-800/70 font-bold' : 'bg-slate-800 text-slate-300 hover:bg-slate-700']">
+            #{{ t }}
+          </span>
+        </div>
+
+        <!-- 篇名大标题 -->
+        <h2 class="text-lg font-black text-slate-100 mb-3 leading-snug tracking-tight">
+          {{ item.title }}
+        </h2>
+
+        <!-- 核心金句高光段落 -->
+        <div class="bg-indigo-950/50 border-l-4 border-indigo-500 rounded-r-xl p-3 mb-4 text-xs sm:text-sm text-indigo-100 leading-relaxed font-normal shadow-inner">
+          <div class="flex items-center space-x-1 text-indigo-400 font-bold text-xs mb-1">
+            <span>💡</span>
+            <span>老王原话核心论点：</span>
+          </div>
+          <p class="italic">“{{ item.highlight }}”</p>
+        </div>
+
+        <!-- 思考与论述提纲（可折叠） -->
+        <div class="mb-4" v-if="item.outline && item.outline.length">
+          <button 
+            @click="toggleExpand(item.id)" 
+            class="text-xs text-slate-400 hover:text-indigo-300 flex items-center space-x-1 py-1 font-medium transition">
+            <span>{{ expandedIds.has(item.id) ? '收起章节脉络 ▴' : '查看本篇章节脉络 ▾' }}</span>
+          </button>
+          <div v-show="expandedIds.has(item.id)" class="mt-2 bg-slate-950/80 rounded-xl p-3.5 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+            <div v-for="(point, idx) in item.outline" :key="idx" class="flex items-start space-x-2">
+              <span class="text-indigo-400 font-bold shrink-0">•</span>
+              <span class="leading-relaxed">{{ point }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 原话讲稿前段预览 -->
+        <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800/60 text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
+          {{ getPreviewText(item.content) }}
+        </div>
+      </div>
+
+      <!-- 底部核心行动栏 -->
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs flex-wrap gap-2">
+        <div class="flex items-center space-x-2">
+          <button 
+            @click="copyText(item.content, '全文（' + item.wordCount + '字）已复制')" 
+            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition flex items-center space-x-1 text-xs font-medium">
+            <span>📋</span>
+            <span>复制全文</span>
+          </button>
+          <button 
+            @click="copyText(item.highlight, '核心金句已复制！')" 
+            class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 active:scale-95 transition text-xs">
+            仅金句
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button 
+            @click="openReaderMode(item)" 
+            class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold active:scale-95 transition shadow-lg shadow-indigo-600/30 flex items-center space-x-1.5 text-xs">
+            <span>🎙️</span>
+            <span>开始深度朗读</span>
+          </button>
+          <button 
+            @click="openCheckinModal(item)" 
+            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold active:scale-95 transition border border-emerald-500/30 flex items-center space-x-1 text-xs">
+            <span>✅</span>
+            <span>打卡</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="getPracticedCount(item.id) > 0" class="mt-2.5 text-[11px] text-emerald-400 flex items-center space-x-1">
+        <span>✨</span>
+        <span>已累计演练复盘 {{ getPracticedCount(item.id) }} 次</span>
+      </div>
+    </article>
+
+    <!-- 加载更多按钮 -->
+    <div v-if="hasMore" class="pt-4 text-center">
+      <button 
+        @click="loadMore" 
+        class="w-full max-w-xs mx-auto py-3 bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold rounded-xl border border-slate-700 active:scale-95 transition text-xs">
+        加载更多讲稿（剩余 {{ filteredCorpus.length - displayedCorpus.length }} 篇）▾
+      </button>
+    </div>
+  </main>
+
+  <!-- 历史复盘打卡日志 Tab -->
+  <main v-if="currentTab === 'history'" class="flex-1 px-4 py-3 space-y-4">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+      <div>
+        <h2 class="text-base font-bold text-white">演练与复盘沉淀档案</h2>
+        <p class="text-xs text-slate-400">已累计完成 {{ logs.length }} 次 10~20 分钟长篇口才实战演练</p>
+      </div>
+      <button @click="exportData" class="px-2.5 py-1 bg-slate-800 rounded-lg text-xs text-indigo-300 border border-slate-700">
+        导出数据 📥
+      </button>
+    </div>
+
+    <div v-if="logs.length === 0" class="py-24 text-center text-slate-500 text-xs">
+      <p class="text-3xl mb-2">🎙️</p>
+      <p>暂无朗读复盘记录</p>
+      <p class="text-slate-600 mt-1">从 320 篇讲稿中挑选一篇，开启你的第一次 15 分钟深度口才演练！</p>
+    </div>
+
+    <div 
+      v-for="log in sortedLogs" 
+      :key="log.id"
+      class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/90 space-y-2.5">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-bold text-slate-100 text-sm leading-snug">{{ log.title }}</span>
+        <span class="text-[10px] text-slate-500 shrink-0">{{ log.date }}</span>
+      </div>
+
+      <div class="flex items-center space-x-2 text-xs flex-wrap gap-1">
+        <span class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/50 text-[11px] font-medium">
+          {{ getLevelInfo(log.level).emoji }} {{ getLevelInfo(log.level).name }}
+        </span>
+        <span v-if="log.duration" class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-[11px] font-semibold">
+          ⏱ 演练用时：{{ formatDuration(log.duration) }}
+        </span>
+      </div>
+
+      <div v-if="log.stuckPoint" class="bg-rose-950/30 border-l-2 border-rose-500/80 p-2.5 rounded-r-lg text-xs text-rose-200">
+        <span class="font-bold text-rose-400 block mb-0.5">⚠️ 卡壳与不顺畅处：</span>
+        {{ log.stuckPoint }}
+      </div>
+
+      <div v-if="log.insight" class="bg-indigo-950/30 border-l-2 border-indigo-500/80 p-2.5 rounded-r-lg text-xs text-indigo-200">
+        <span class="font-bold text-indigo-400 block mb-0.5">💡 读完后的深度感悟：</span>
+        {{ log.insight }}
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button @click="deleteLog(log.id)" class="text-[11px] text-rose-400/70 hover:text-rose-300">
+          删除此记录
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 沉浸式长篇朗读与提词模式 (Reader & Teleprompter Modal) -->
+  <div v-if="readingItem" class="fixed inset-0 z-50 bg-slate-950 flex flex-col">
+    
+    <!-- 提词器顶栏 -->
+    <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
+      <div class="truncate max-w-[200px] sm:max-w-xs">
+        <span class="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">深度口播提词演练</span>
+        <h3 class="text-xs sm:text-sm font-bold text-white truncate">{{ readingItem.title }}</h3>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800 text-xs font-mono text-indigo-300 border border-slate-700">
+          <span>⏱</span>
+          <span class="font-bold">{{ formatTime(speechSeconds) }}</span>
+        </div>
+        <button @click="toggleTimer" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold active:scale-95 transition">
+          {{ isTimerRunning ? '⏸ 暂停' : '▶ 计时' }}
+        </button>
+        <button @click="closeReaderMode" class="p-1 text-slate-400 hover:text-white text-lg">
+          ✕
+        </button>
+      </div>
+    </header>
+
+    <!-- 工具栏 -->
+    <div class="bg-slate-900/80 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-2">
+      <div class="flex items-center space-x-1.5">
+        <span class="text-[11px] text-slate-400">字号:</span>
+        <button @click="readerFontSize = Math.max(14, readerFontSize - 2)" class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center font-bold border border-slate-700">-</button>
+        <span class="text-[11px] font-mono w-6 text-center">{{ readerFontSize }}</span>
+        <button @click="readerFontSize = Math.min(30, readerFontSize + 2)" class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center font-bold border border-slate-700">+</button>
+      </div>
+
+      <!-- 自动慢速滚屏 -->
+      <div class="flex items-center space-x-1.5">
+        <button 
+          @click="toggleAutoScroll" 
+          :class="['px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center space-x-1 transition',
+            isAutoScrolling ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-300 border-slate-700']">
+          <span>📜</span>
+          <span>{{ isAutoScrolling ? '停止滚屏' : '自动向下滚屏' }}</span>
+        </button>
+        <select v-if="isAutoScrolling" v-model="scrollSpeed" class="bg-slate-800 text-[10px] text-slate-200 rounded px-1 py-0.5 border border-slate-700">
+          <option :value="1">慢速</option>
+          <option :value="2">标准</option>
+          <option :value="3">稍快</option>
+        </select>
+      </div>
+
+      <button @click="copyText(readingItem.content, '长篇讲稿已完整复制')" class="text-xs text-indigo-400 hover:text-indigo-300">
+        📋 复制全文
+      </button>
+    </div>
+
+    <!-- 提词长文展示区 -->
+    <div 
+      ref="readerScrollContainer" 
+      class="flex-1 overflow-y-auto px-5 sm:px-8 py-6 max-w-2xl mx-auto w-full article-body" 
+      :style="{ fontSize: readerFontSize + 'px' }">
+      
+      <div class="mb-6 p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50">
+        <h4 class="text-indigo-300 font-bold text-sm mb-1.5">🎙️ 口才朗读建议：</h4>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          全篇约 <strong class="text-indigo-300">{{ readingItem.wordCount }}字</strong>，建议保持沉稳、坚定的语调进行 10~20 分钟不间断演练。遇到问句时放慢语速，遇到重点论断时加重语气。
+        </p>
+      </div>
+
+      <div v-html="renderedContent" class="text-slate-100 font-normal tracking-wide"></div>
+
+      <div class="pt-8 pb-12 mt-8 border-t border-slate-800/80 text-center space-y-3">
+        <p class="text-xs text-slate-400">🎉 本篇长篇演练已通读完毕！用时：{{ formatTime(speechSeconds) }}</p>
+        <button 
+          @click="finishReadingAndCheckin" 
+          class="w-full max-w-sm mx-auto py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-bold rounded-2xl shadow-xl shadow-emerald-600/30 active:scale-95 transition flex items-center justify-center space-x-2 text-sm">
+          <span>✅</span>
+          <span>朗读演练完成，去记录复盘</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：复盘打卡录入 Modal -->
+  <div v-if="checkinItem" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border border-slate-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2.5 border-b border-slate-800">
+        <div>
+          <span class="text-[10px] text-indigo-400 font-bold uppercase">10~20分钟演练复盘</span>
+          <h3 class="font-bold text-base text-slate-100 truncate max-w-[260px]">{{ checkinItem.title }}</h3>
+        </div>
+        <button @click="checkinItem = null" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">本次朗读演练手感：</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button 
+            v-for="lvl in levels" 
+            :key="lvl.val" 
+            @click="checkinLevel = lvl.val"
+            :class="['py-2.5 px-1 rounded-xl text-xs font-semibold border flex flex-col items-center transition',
+              checkinLevel === lvl.val 
+                ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200 shadow-md' 
+                : 'bg-slate-950 border-slate-800 text-slate-400']">
+            <span class="text-lg">{{ lvl.emoji }}</span>
+            <span class="mt-1 text-[11px]">{{ lvl.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-rose-300 mb-1 flex items-center space-x-1">
+          <span>⚠️</span>
+          <span>卡壳点或表达不顺畅的段落（核心复盘抓手）：</span>
+        </label>
+        <textarea 
+          v-model="checkinStuckPoint" 
+          rows="2" 
+          placeholder="例如：在讲到第三章节时有点咬字不清；某个逻辑转折点不够丝滑..."
+          class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-rose-500"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-indigo-300 mb-1 flex items-center space-x-1">
+          <span>💡</span>
+          <span>读完后的核心启发与思维内化：</span>
+        </label>
+        <textarea 
+          v-model="checkinInsight" 
+          rows="2" 
+          placeholder="例如：原话的论据展开非常透彻，读起来很有冲击力！"
+          class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
+      </div>
+
+      <div class="flex space-x-2 pt-1">
+        <button @click="checkinItem = null" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium active:scale-95 transition">
+          取消
+        </button>
+        <button @click="saveCheckin" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 active:scale-95 transition">
+          保存复盘记录
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗：统计战报 Modal -->
+  <div v-if="showStatsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-800 p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+        <h3 class="font-bold text-base text-white">📊 深度口才演练战报</h3>
+        <button @click="showStatsModal = false" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-center">
+        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+          <span class="text-2xl font-black text-indigo-400">{{ totalPracticeCount }}</span>
+          <p class="text-[11px] text-slate-400 mt-1">总演练篇次</p>
+        </div>
+        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+          <span class="text-2xl font-black text-amber-400">{{ streakDays }}</span>
+          <p class="text-[11px] text-slate-400 mt-1">连续打卡天数</p>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-300 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 leading-relaxed space-y-1.5">
+        <p class="font-bold text-indigo-300">🎙️ 老王深度表达心法：</p>
+        <p>短金句只能带来瞬间的多巴胺，只有沉浸朗读 10~20 分钟的高信噪比长篇原话，才能真正重塑你的语言神经回路，建立起面对任何大场面都能脱稿连续输出 15 分钟的顶级表达力！</p>
+      </div>
+
+      <button @click="showStatsModal = false" class="w-full py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
+        收到，继续操练
+      </button>
+    </div>
+  </div>
+
+  <!-- 底部固定导航栏 -->
+  <nav class="fixed bottom-0 left-0 right-0 z-20 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 max-w-2xl mx-auto px-6 py-2.5 flex items-center justify-around">
+    <button @click="currentTab = 'corpus'"
+      :class="['flex flex-col items-center space-y-1 text-xs transition', currentTab === 'corpus' ? 'text-indigo-400 font-bold' : 'text-slate-500 hover:text-slate-300']">
+      <span class="text-base">📚</span>
+      <span>320篇讲稿</span>
+    </button>
+    <button @click="currentTab = 'history'"
+      :class="['flex flex-col items-center space-y-1 text-xs transition', currentTab === 'history' ? 'text-indigo-400 font-bold' : 'text-slate-500 hover:text-slate-300']">
+      <span class="text-base">📝</span>
+      <span>复盘档案 ({{ logs.length }})</span>
+    </button>
+    <button @click="showStatsModal = true"
+      class="flex flex-col items-center space-y-1 text-xs text-slate-500 hover:text-slate-300 transition">
+      <span class="text-base">📊</span>
+      <span>演练统计</span>
+    </button>
+  </nav>
+
+  <!-- 全局 Toast -->
+  <div 
+    v-if="toastMsg" 
+    class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl shadow-indigo-600/50 pointer-events-none transition-all">
+    {{ toastMsg }}
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const corpusList = ref([]);
+    const allTags = ref(['全部标签', '定义类', '心法类', '底层逻辑类', '实战案例类', '方法论类', '心智成熟', '亲密关系', '商业认知']);
+    const activeTag = ref('全部标签');
+
+    const categories = ref([
+      '全部分类',
+      '心智成熟与人生底色',
+      '亲密关系与家庭伦理',
+      '商业认知与财富自由',
+      'AI协作与新时代能力',
+      '自我管理与强人心法',
+      '两代关系与权责边界'
+    ]);
+    const activeCategory = ref('全部分类');
+    const searchQuery = ref('');
+    const currentTab = ref('corpus');
+
+    const page = ref(1);
+    const pageSize = ref(15);
+
+    const expandedIds = ref(new Set());
+    const toastMsg = ref('');
+    const logs = ref([]);
+
+    const checkinItem = ref(null);
+    const checkinLevel = ref('medium');
+    const checkinStuckPoint = ref('');
+    const checkinInsight = ref('');
+
+    const readingItem = ref(null);
+    const readerScrollContainer = ref(null);
+    const readerFontSize = ref(19);
+    const speechSeconds = ref(0);
+    const isTimerRunning = ref(false);
+    const isAutoScrolling = ref(false);
+    const scrollSpeed = ref(1);
+    let timerInterval = null;
+    let autoScrollInterval = null;
+
+    const showStatsModal = ref(false);
+
+    const levels = [
+      { val: 'stuck', name: '略有卡壳', emoji: '⚠️' },
+      { val: 'medium', name: '基本流畅', emoji: '👍' },
+      { val: 'master', name: '脱稿自如', emoji: '🔥' }
+    ];
+
+    onMounted(async () => {
+      const saved = localStorage.getItem('wang_speech_long_logs');
+      if (saved) {
+        try { logs.value = JSON.parse(saved); } catch(e) {}
+      }
+      // Load 320 corpus
+      try {
+        const res = await fetch('./data/corpus.json');
+        if (res.ok) {
+          corpusList.value = await res.json();
+        }
+      } catch (err) {
+        console.error('Failed to fetch corpus.json', err);
+      }
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      }
+    });
+
+    onUnmounted(() => {
+      clearInterval(timerInterval);
+      clearInterval(autoScrollInterval);
+    });
+
+    // 过滤
+    const filteredCorpus = computed(() => {
+      const q = searchQuery.value.trim().toLowerCase();
+      return corpusList.value.filter(item => {
+        const matchCat = activeCategory.value === '全部分类' || item.category === activeCategory.value;
+        const matchTag = activeTag.value === '全部标签' || (item.tags && item.tags.includes(activeTag.value));
+        const matchSearch = !q || 
+          item.title.toLowerCase().includes(q) || 
+          item.highlight.toLowerCase().includes(q) || 
+          (item.tags && item.tags.some(t => t.toLowerCase().includes(q))) ||
+          item.content.toLowerCase().includes(q);
+        return matchCat && matchTag && matchSearch;
+      });
+    });
+
+    // 分页切片展示
+    const displayedCorpus = computed(() => {
+      return filteredCorpus.value.slice(0, page.value * pageSize.value);
+    });
+
+    const hasMore = computed(() => {
+      return displayedCorpus.value.length < filteredCorpus.value.length;
+    });
+
+    const loadMore = () => {
+      page.value++;
+    };
+
+    const sortedLogs = computed(() => [...logs.value].reverse());
+    const totalPracticeCount = computed(() => logs.value.length);
+    const streakDays = computed(() => {
+      if (!logs.value.length) return 0;
+      return new Set(logs.value.map(l => l.date.split(' ')[0])).size;
+    });
+
+    const resetFilter = () => {
+      activeCategory.value = '全部分类';
+      activeTag.value = '全部标签';
+      searchQuery.value = '';
+      page.value = 1;
+    };
+
+    const toggleExpand = (id) => {
+      const s = new Set(expandedIds.value);
+      s.has(id) ? s.delete(id) : s.add(id);
+      expandedIds.value = s;
+    };
+
+    const getPreviewText = (md) => {
+      return md.replace(/###.*?\n/g, '').replace(/---/g, '').replace(/\n+/g, ' ').slice(0, 160) + '...';
+    };
+
+    const renderedContent = computed(() => {
+      if (!readingItem.value) return '';
+      let text = readingItem.value.content;
+      text = text.replace(/### (.*?)\n/g, '<h3>$1</h3>');
+      text = text.replace(/#### (.*?)\n/g, '<h4 class="font-bold text-indigo-300 mt-4 mb-2">$1</h4>');
+      text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-200 font-bold">$1</strong>');
+      text = text.replace(/---\n/g, '<hr>');
+      const paragraphs = text.split('\n\n');
+      return paragraphs.map(p => {
+        if (p.startsWith('<h3>') || p.startsWith('<hr>') || p.startsWith('<h4')) return p;
+        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+      }).join('');
+    });
+
+    const showToast = (msg) => {
+      toastMsg.value = msg;
+      setTimeout(() => { toastMsg.value = ''; }, 2400);
+    };
+
+    const copyText = (text, msg = '已复制到剪贴板') => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => fallbackCopy(text, msg));
+      } else {
+        fallbackCopy(text, msg);
+      }
+    };
+
+    const fallbackCopy = (text, msg) => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(msg);
+      } catch (e) {
+        showToast('复制失败，请手动选择复制');
+      }
+      document.body.removeChild(ta);
+    };
+
+    const openReaderMode = (item) => {
+      readingItem.value = item;
+      speechSeconds.value = 0;
+      isTimerRunning.value = true;
+      isAutoScrolling.value = false;
+      
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        speechSeconds.value++;
+      }, 1000);
+
+      nextTick(() => {
+        if (readerScrollContainer.value) {
+          readerScrollContainer.value.scrollTop = 0;
+        }
+      });
+    };
+
+    const closeReaderMode = () => {
+      clearInterval(timerInterval);
+      clearInterval(autoScrollInterval);
+      isTimerRunning.value = false;
+      isAutoScrolling.value = false;
+      readingItem.value = null;
+    };
+
+    const toggleTimer = () => {
+      isTimerRunning.value = !isTimerRunning.value;
+      if (isTimerRunning.value) {
+        timerInterval = setInterval(() => { speechSeconds.value++; }, 1000);
+      } else {
+        clearInterval(timerInterval);
+      }
+    };
+
+    const toggleAutoScroll = () => {
+      isAutoScrolling.value = !isAutoScrolling.value;
+      if (isAutoScrolling.value) {
+        autoScrollInterval = setInterval(() => {
+          if (readerScrollContainer.value) {
+            readerScrollContainer.value.scrollTop += Number(scrollSpeed.value);
+          }
+        }, 50);
+      } else {
+        clearInterval(autoScrollInterval);
+      }
+    };
+
+    const formatTime = (secs) => {
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    };
+
+    const formatDuration = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      if (m === 0) return `${s}秒`;
+      return `${m}分${s}秒`;
+    };
+
+    const finishReadingAndCheckin = () => {
+      const item = readingItem.value;
+      const duration = speechSeconds.value;
+      closeReaderMode();
+      openCheckinModal(item, duration);
+    };
+
+    const openCheckinModal = (item, duration = 0) => {
+      checkinItem.value = item;
+      checkinLevel.value = 'medium';
+      checkinStuckPoint.value = '';
+      checkinInsight.value = '';
+      if (duration > 0) speechSeconds.value = duration;
+    };
+
+    const saveCheckin = () => {
+      if (!checkinItem.value) return;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('zh-CN') + ' ' + now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      
+      const newLog = {
+        id: 'log_' + Date.now(),
+        corpusId: checkinItem.value.id,
+        title: checkinItem.value.title,
+        category: checkinItem.value.category,
+        tags: checkinItem.value.tags,
+        level: checkinLevel.value,
+        stuckPoint: checkinStuckPoint.value.trim(),
+        insight: checkinInsight.value.trim(),
+        date: dateStr,
+        duration: speechSeconds.value > 0 ? speechSeconds.value : null
+      };
+
+      logs.value.push(newLog);
+      localStorage.setItem('wang_speech_long_logs', JSON.stringify(logs.value));
+      
+      showToast('🎉 打卡成功！已沉淀本次演练');
+      checkinItem.value = null;
+      speechSeconds.value = 0;
+    };
+
+    const deleteLog = (id) => {
+      if (confirm('确认删除该条演练记录？')) {
+        logs.value = logs.value.filter(l => l.id !== id);
+        localStorage.setItem('wang_speech_long_logs', JSON.stringify(logs.value));
+      }
+    };
+
+    const getPracticedCount = (corpusId) => {
+      return logs.value.filter(l => l.corpusId === corpusId).length;
+    };
+
+    const getLevelInfo = (lvl) => {
+      return levels.find(l => l.val === lvl) || levels[1];
+    };
+
+    const exportData = () => {
+      const blob = new Blob([JSON.stringify(logs.value, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `老王深度口才演练复盘_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    return {
+      corpusList, allTags, activeTag,
+      categories, activeCategory, searchQuery, currentTab,
+      page, pageSize, hasMore, loadMore,
+      filteredCorpus, displayedCorpus, resetFilter, expandedIds, toggleExpand,
+      getPreviewText, renderedContent,
+      copyText, toastMsg,
+      logs, sortedLogs, totalPracticeCount, streakDays,
+      readingItem, readerScrollContainer, readerFontSize,
+      speechSeconds, isTimerRunning, isAutoScrolling, scrollSpeed,
+      openReaderMode, closeReaderMode, toggleTimer, toggleAutoScroll,
+      formatTime, formatDuration, finishReadingAndCheckin,
+      checkinItem, checkinLevel, checkinStuckPoint, checkinInsight,
+      levels, openCheckinModal, saveCheckin, deleteLog,
+      getPracticedCount, getLevelInfo,
+      showStatsModal, exportData
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
