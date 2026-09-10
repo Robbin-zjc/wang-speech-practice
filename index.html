@@ -10,6 +10,7 @@
   <link rel="manifest" href="./manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="./data/corpus.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -521,7 +522,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
 
 createApp({
   setup() {
-    const corpusList = ref([]);
+    const corpusList = ref(window.__WANG_CORPUS__ || []);
     const allTags = ref(['全部标签', '定义类', '心法类', '底层逻辑类', '实战案例类', '方法论类', '心智成熟', '亲密关系', '商业认知']);
     const activeTag = ref('全部标签');
 
@@ -573,14 +574,16 @@ createApp({
       if (saved) {
         try { logs.value = JSON.parse(saved); } catch(e) {}
       }
-      // Load 320 corpus
-      try {
-        const res = await fetch('./data/corpus.json');
-        if (res.ok) {
-          corpusList.value = await res.json();
+      // Load 320 corpus fallback
+      if (!corpusList.value.length) {
+        try {
+          const res = await fetch('./data/corpus.json');
+          if (res.ok) {
+            corpusList.value = await res.json();
+          }
+        } catch (err) {
+          console.error('Failed to fetch corpus.json', err);
         }
-      } catch (err) {
-        console.error('Failed to fetch corpus.json', err);
       }
 
       if ('serviceWorker' in navigator) {
