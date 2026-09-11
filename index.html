@@ -1251,6 +1251,16 @@ createApp({
       return levels.find(l => l.val === lvl) || levels[1];
     };
 
+    const exportData = () => {
+      const blob = new Blob([JSON.stringify(logs.value, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `老王口才复盘档案_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
     const forceUpdateApp = async () => {
       showToast('正在清理缓存并同步最新版本...');
       if ('caches' in window) {
