@@ -10,6 +10,7 @@
   <link rel="manifest" href="./manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <!-- 离线本地数据双保险 -->
   <script src="./data/corpus.js"></script>
   <script>
     tailwind.config = {
@@ -47,6 +48,14 @@
       background: rgba(148, 163, 184, 0.15);
       margin: 1.5rem 0;
     }
+    /* 脉冲呼吸光效 */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+    .animate-pulse-glow {
+      animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white">
@@ -61,9 +70,9 @@
       <div>
         <div class="flex items-center space-x-1.5">
           <h1 class="font-bold text-base tracking-wide text-white">老王原话朗读库</h1>
-          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">320篇 · 10~20分钟长篇</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">320篇 · 路上跟读版</span>
         </div>
-        <p class="text-[11px] text-slate-400">保留完整思维流动 · 拒绝干瘪精简</p>
+        <p class="text-[11px] text-slate-400">支持“他读一句我读一句” · 解放双手双眼</p>
       </div>
     </div>
     <div class="flex items-center space-x-2">
@@ -93,11 +102,11 @@
     </div>
   </section>
 
-  <!-- 标签维度筛选器（重点支持：定义类、心法类、底层逻辑类等） -->
+  <!-- 标签维度筛选器 -->
   <section class="px-4 pt-2.5 pb-1 bg-slate-900/20">
     <div class="flex items-center space-x-1.5 mb-1.5 text-xs text-slate-400">
       <span class="font-semibold text-indigo-400">🏷️ 标签维度：</span>
-      <span class="text-[11px] text-slate-500">（快速聚焦定义/心法/案例）</span>
+      <span class="text-[11px] text-slate-500">（点击快速聚焦特定主题）</span>
     </div>
     <div class="flex space-x-2 overflow-x-auto no-scrollbar py-1 text-xs">
       <button
@@ -132,10 +141,10 @@
   <!-- 语料列表页 Tab -->
   <main v-if="currentTab === 'corpus'" class="flex-1 px-4 py-3 space-y-5">
     
-    <!-- 筛选结果统计提示 -->
+    <!-- 统计行 -->
     <div class="flex items-center justify-between text-xs text-slate-400 px-1">
       <span>找到 <strong class="text-indigo-400">{{ filteredCorpus.length }}</strong> 篇匹配讲稿</span>
-      <span v-if="filteredCorpus.length > pageSize">当前展示前 {{ Math.min(page * pageSize, filteredCorpus.length) }} 篇</span>
+      <span v-if="filteredCorpus.length > pageSize">展示前 {{ Math.min(page * pageSize, filteredCorpus.length) }} 篇</span>
     </div>
 
     <div v-if="filteredCorpus.length === 0" class="py-20 text-center text-slate-500">
@@ -144,7 +153,7 @@
       <button @click="resetFilter" class="mt-3 text-xs text-indigo-400 underline">重置所有筛选</button>
     </div>
 
-    <!-- 朗读稿长篇卡片流（分页懒加载展示） -->
+    <!-- 讲稿卡片 -->
     <article
       v-for="item in displayedCorpus"
       :key="item.id"
@@ -166,7 +175,7 @@
           </span>
         </div>
 
-        <!-- 标签徽章流 -->
+        <!-- 标签徽章 -->
         <div class="flex flex-wrap gap-1.5 mb-2.5">
           <span 
             v-for="t in item.tags" 
@@ -192,7 +201,7 @@
           <p class="italic">“{{ item.highlight }}”</p>
         </div>
 
-        <!-- 思考与论述提纲（可折叠） -->
+        <!-- 思考与论述提纲 -->
         <div class="mb-4" v-if="item.outline && item.outline.length">
           <button 
             @click="toggleExpand(item.id)" 
@@ -222,25 +231,28 @@
             <span>📋</span>
             <span>复制全文</span>
           </button>
-          <button 
-            @click="copyText(item.highlight, '核心金句已复制！')" 
-            class="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 active:scale-95 transition text-xs">
-            仅金句
-          </button>
         </div>
 
         <div class="flex items-center space-x-2">
+          <!-- 核心新增：🎧 路上跟读模式（他读一句我读一句） -->
+          <button 
+            @click="startShadowingMode(item)" 
+            class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold active:scale-95 transition shadow-lg shadow-emerald-600/30 flex items-center space-x-1 text-xs">
+            <span>🎧</span>
+            <span>路上跟读</span>
+          </button>
+          <!-- 🎙️ 沉浸看读模式 -->
           <button 
             @click="openReaderMode(item)" 
-            class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold active:scale-95 transition shadow-lg shadow-indigo-600/30 flex items-center space-x-1.5 text-xs">
+            class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold active:scale-95 transition shadow-md shadow-indigo-600/30 flex items-center space-x-1 text-xs">
             <span>🎙️</span>
-            <span>开始深度朗读</span>
+            <span>看屏朗读</span>
           </button>
+          <!-- 打卡 -->
           <button 
             @click="openCheckinModal(item)" 
-            class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 font-semibold active:scale-95 transition border border-emerald-500/30 flex items-center space-x-1 text-xs">
+            class="px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-semibold active:scale-95 transition border border-slate-700 flex items-center space-x-1 text-xs">
             <span>✅</span>
-            <span>打卡</span>
           </button>
         </div>
       </div>
@@ -251,7 +263,7 @@
       </div>
     </article>
 
-    <!-- 加载更多按钮 -->
+    <!-- 加载更多 -->
     <div v-if="hasMore" class="pt-4 text-center">
       <button 
         @click="loadMore" 
@@ -266,7 +278,7 @@
     <div class="flex items-center justify-between pb-2 border-b border-slate-800">
       <div>
         <h2 class="text-base font-bold text-white">演练与复盘沉淀档案</h2>
-        <p class="text-xs text-slate-400">已累计完成 {{ logs.length }} 次 10~20 分钟长篇口才实战演练</p>
+        <p class="text-xs text-slate-400">已累计完成 {{ logs.length }} 次口才实战演练</p>
       </div>
       <button @click="exportData" class="px-2.5 py-1 bg-slate-800 rounded-lg text-xs text-indigo-300 border border-slate-700">
         导出数据 📥
@@ -292,8 +304,11 @@
         <span class="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/50 text-[11px] font-medium">
           {{ getLevelInfo(log.level).emoji }} {{ getLevelInfo(log.level).name }}
         </span>
+        <span v-if="log.mode" class="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 text-[11px]">
+          {{ log.mode === 'shadowing' ? '🎧 路上跟读' : '🎙️ 看屏朗读' }}
+        </span>
         <span v-if="log.duration" class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-[11px] font-semibold">
-          ⏱ 演练用时：{{ formatDuration(log.duration) }}
+          ⏱ 用时：{{ formatDuration(log.duration) }}
         </span>
       </div>
 
@@ -315,13 +330,208 @@
     </div>
   </main>
 
-  <!-- 沉浸式长篇朗读与提词模式 (Reader & Teleprompter Modal) -->
-  <div v-if="readingItem" class="fixed inset-0 z-50 bg-slate-950 flex flex-col">
+  <!-- ========================================================================= -->
+  <!-- 模式 1：🎧 路上逐句跟读播放器（他读一句我读一句 · 智能留白 · 口袋防误触） -->
+  <!-- ========================================================================= -->
+  <div v-if="shadowItem" class="fixed inset-0 z-50 bg-slate-950 flex flex-col selection:bg-transparent">
     
-    <!-- 提词器顶栏 -->
+    <!-- 口袋防误触模式界面（全屏深黑，大面积盲操） -->
+    <div 
+      v-if="isPocketMode" 
+      @click="handlePocketClick"
+      class="fixed inset-0 z-50 bg-black flex flex-col justify-between p-6 cursor-pointer select-none">
+      
+      <!-- 顶部轻微提示 -->
+      <div class="flex items-center justify-between text-slate-600 text-xs pt-4">
+        <span>🔒 口袋防误触模式已开启</span>
+        <button @click.stop="isPocketMode = false" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-slate-300 text-xs">
+          退出口袋模式 ✕
+        </button>
+      </div>
+
+      <!-- 中央大面积盲操区 -->
+      <div class="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+        <div class="w-24 h-24 rounded-full border-2 border-slate-800 flex items-center justify-center text-3xl">
+          <span v-if="shadowState === 'SPEAKING'" class="text-indigo-400 animate-pulse">🔊</span>
+          <span v-else-if="shadowState === 'PAUSED_FOR_ME'" class="text-emerald-400 animate-pulse">🎙️</span>
+          <span v-else class="text-slate-600">⏸</span>
+        </div>
+
+        <div>
+          <div class="text-sm font-semibold text-slate-300 mb-1">
+            <span v-if="shadowState === 'SPEAKING'">老王示范朗读中...</span>
+            <span v-else-if="shadowState === 'PAUSED_FOR_ME'" class="text-emerald-400 font-bold">轮到你读（剩余 {{ remainingPauseSec }}s）</span>
+            <span v-else-if="shadowState === 'PAUSED'">已暂停</span>
+          </div>
+          <p class="text-xs text-slate-500">第 {{ currentSentenceIdx + 1 }} / {{ sentenceList.length }} 句 · 路上听读</p>
+        </div>
+
+        <div class="pt-6 text-[11px] text-slate-600 space-y-1">
+          <p>👆 单击屏幕任意处：暂停 / 继续</p>
+          <p>✌️ 双击屏幕中央：重听本句</p>
+        </div>
+      </div>
+
+      <!-- 底部结束按钮 -->
+      <div class="pb-6 text-center">
+        <button @click.stop="finishShadowingAndCheckin" class="px-6 py-2.5 bg-slate-900 border border-slate-800 text-emerald-400 text-xs font-semibold rounded-xl">
+          ✅ 演练完毕，去打卡
+        </button>
+      </div>
+    </div>
+
+    <!-- 正常视觉跟读界面 -->
+    <div v-else class="flex-1 flex flex-col">
+      <!-- 顶栏控制 -->
+      <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div class="truncate max-w-[200px] sm:max-w-xs">
+          <span class="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">🎧 路上逐句跟读演练</span>
+          <h3 class="text-xs sm:text-sm font-bold text-white truncate">{{ shadowItem.title }}</h3>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+          <!-- 开启口袋模式 -->
+          <button @click="isPocketMode = true" class="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs flex items-center space-x-1 active:scale-95 transition">
+            <span>📱</span>
+            <span>口袋模式</span>
+          </button>
+          <!-- 退出 -->
+          <button @click="closeShadowingMode" class="p-1 text-slate-400 hover:text-white text-lg">
+            ✕
+          </button>
+        </div>
+      </header>
+
+      <!-- 调节工具栏：语速 + 留白倍率 -->
+      <div class="bg-slate-900/60 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-2">
+        <!-- 语速选择 -->
+        <div class="flex items-center space-x-1.5">
+          <span class="text-[11px] text-slate-400">语速:</span>
+          <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <button 
+              v-for="r in [0.8, 1.0, 1.2]" 
+              :key="r"
+              @click="setSpeechRate(r)"
+              :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition',
+                speechRate === r ? 'bg-indigo-600 text-white' : 'text-slate-400']">
+              {{ r }}x
+            </button>
+          </div>
+        </div>
+
+        <!-- 留白倍率选择 -->
+        <div class="flex items-center space-x-1.5">
+          <span class="text-[11px] text-slate-400">留白倍率:</span>
+          <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <button 
+              v-for="p in [1.0, 1.2, 1.5]" 
+              :key="p"
+              @click="pauseRatio = p"
+              :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition',
+                pauseRatio === p ? 'bg-emerald-600 text-white' : 'text-slate-400']">
+              {{ p }}x
+            </button>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-400">
+          进度: <strong class="text-indigo-300">{{ currentSentenceIdx + 1 }}</strong> / {{ sentenceList.length }} 句
+        </div>
+      </div>
+
+      <!-- 核心听读主卡片区 -->
+      <div class="flex-1 flex flex-col justify-center px-6 py-4 max-w-lg mx-auto w-full space-y-6">
+        
+        <!-- 状态指示徽章 -->
+        <div class="text-center">
+          <div v-if="shadowState === 'SPEAKING'" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60 text-xs font-semibold animate-pulse">
+            <span>🔊</span>
+            <span>老王示范朗读中，请仔细听...</span>
+          </div>
+          <div v-else-if="shadowState === 'PAUSED_FOR_ME'" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/80 text-xs font-bold animate-pulse-glow">
+            <span>🎙️</span>
+            <span>轮到你读！倒计时 {{ remainingPauseSec }} 秒</span>
+          </div>
+          <div v-else class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-semibold">
+            <span>⏸ 已暂停</span>
+          </div>
+        </div>
+
+        <!-- 当前句大字聚焦卡片 -->
+        <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden transition-all duration-300">
+          <div class="text-xs text-slate-500 mb-2 font-mono">
+            第 {{ currentSentenceIdx + 1 }} 句 · 建议大声跟读
+          </div>
+          <p class="text-xl sm:text-2xl font-bold leading-relaxed tracking-wide transition-colors"
+            :class="shadowState === 'PAUSED_FOR_ME' ? 'text-emerald-300' : 'text-slate-100'">
+            {{ currentSentenceText }}
+          </p>
+
+          <!-- 留白倒计时进度条 -->
+          <div v-if="shadowState === 'PAUSED_FOR_ME'" class="mt-5 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-emerald-500 transition-all duration-100"
+              :style="{ width: pauseProgressPercent + '%' }"></div>
+          </div>
+        </div>
+
+        <!-- 上一句与下一句弱化预览（帮助建立思维上下文） -->
+        <div class="space-y-2 text-xs text-slate-500 px-2">
+          <p v-if="currentSentenceIdx > 0" class="truncate opacity-50">
+            上一句：{{ sentenceList[currentSentenceIdx - 1] }}
+          </p>
+          <p v-if="currentSentenceIdx + 1 < sentenceList.length" class="truncate opacity-50">
+            下一句：{{ sentenceList[currentSentenceIdx + 1] }}
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 底部跟读播放器控制栏 -->
+      <div class="bg-slate-900 border-t border-slate-800 px-6 py-4 flex items-center justify-between">
+        <button 
+          @click="prevSentence" 
+          class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition">
+          ⏮
+        </button>
+
+        <!-- 播放/暂停 -->
+        <button 
+          @click="toggleShadowPlayPause" 
+          class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-bold text-xl flex items-center justify-center shadow-lg shadow-indigo-600/40 active:scale-95 transition">
+          <span>{{ shadowState === 'PAUSED' ? '▶' : '⏸' }}</span>
+        </button>
+
+        <!-- 重听本句 -->
+        <button 
+          @click="replayCurrentSentence" 
+          class="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-indigo-300 text-xs font-semibold flex items-center space-x-1 active:scale-95 transition">
+          <span>🔄</span>
+          <span>重听本句</span>
+        </button>
+
+        <button 
+          @click="nextSentence" 
+          class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition">
+          ⏭
+        </button>
+
+        <button 
+          @click="finishShadowingAndCheckin" 
+          class="px-3.5 py-2.5 rounded-2xl bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-bold active:scale-95 transition">
+          完成打卡
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 模式 2：🎙️ 沉浸式长篇看屏朗读与提词模式 (Teleprompter Modal) -->
+  <!-- ========================================================================= -->
+  <div v-if="readingItem" class="fixed inset-0 z-50 bg-slate-950 flex flex-col">
     <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
       <div class="truncate max-w-[200px] sm:max-w-xs">
-        <span class="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">深度口播提词演练</span>
+        <span class="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">深度看屏提词朗读</span>
         <h3 class="text-xs sm:text-sm font-bold text-white truncate">{{ readingItem.title }}</h3>
       </div>
       
@@ -339,7 +549,6 @@
       </div>
     </header>
 
-    <!-- 工具栏 -->
     <div class="bg-slate-900/80 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-2">
       <div class="flex items-center space-x-1.5">
         <span class="text-[11px] text-slate-400">字号:</span>
@@ -348,7 +557,6 @@
         <button @click="readerFontSize = Math.min(30, readerFontSize + 2)" class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center font-bold border border-slate-700">+</button>
       </div>
 
-      <!-- 自动慢速滚屏 -->
       <div class="flex items-center space-x-1.5">
         <button 
           @click="toggleAutoScroll" 
@@ -369,7 +577,6 @@
       </button>
     </div>
 
-    <!-- 提词长文展示区 -->
     <div 
       ref="readerScrollContainer" 
       class="flex-1 overflow-y-auto px-5 sm:px-8 py-6 max-w-2xl mx-auto w-full article-body" 
@@ -378,7 +585,7 @@
       <div class="mb-6 p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50">
         <h4 class="text-indigo-300 font-bold text-sm mb-1.5">🎙️ 口才朗读建议：</h4>
         <p class="text-xs text-slate-300 leading-relaxed">
-          全篇约 <strong class="text-indigo-300">{{ readingItem.wordCount }}字</strong>，建议保持沉稳、坚定的语调进行 10~20 分钟不间断演练。遇到问句时放慢语速，遇到重点论断时加重语气。
+          全篇约 <strong class="text-indigo-300">{{ readingItem.wordCount }}字</strong>，建议保持沉稳、坚定的语调进行 10~20 分钟不间断演练。
         </p>
       </div>
 
@@ -401,14 +608,14 @@
     <div class="bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-2xl border border-slate-800 p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2.5 border-b border-slate-800">
         <div>
-          <span class="text-[10px] text-indigo-400 font-bold uppercase">10~20分钟演练复盘</span>
+          <span class="text-[10px] text-indigo-400 font-bold uppercase">演练复盘打卡</span>
           <h3 class="font-bold text-base text-slate-100 truncate max-w-[260px]">{{ checkinItem.title }}</h3>
         </div>
         <button @click="checkinItem = null" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
       </div>
 
       <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1.5">本次朗读演练手感：</label>
+        <label class="block text-xs font-semibold text-slate-300 mb-1.5">本次演练手感：</label>
         <div class="grid grid-cols-3 gap-2">
           <button 
             v-for="lvl in levels" 
@@ -432,7 +639,7 @@
         <textarea 
           v-model="checkinStuckPoint" 
           rows="2" 
-          placeholder="例如：在讲到第三章节时有点咬字不清；某个逻辑转折点不够丝滑..."
+          placeholder="例如：在讲到第二大点时卡住了；复述合伙人股权时语速太快..."
           class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-rose-500"></textarea>
       </div>
 
@@ -444,7 +651,7 @@
         <textarea 
           v-model="checkinInsight" 
           rows="2" 
-          placeholder="例如：原话的论据展开非常透彻，读起来很有冲击力！"
+          placeholder="例如：投资人思维看待世界让人心胸豁然开朗，在路上跟读两遍后几乎能脱稿讲出来了！"
           class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
       </div>
 
@@ -463,7 +670,7 @@
   <div v-if="showStatsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-800 p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
-        <h3 class="font-bold text-base text-white">📊 深度口才演练战报</h3>
+        <h3 class="font-bold text-base text-white">📊 口才实战演练战报</h3>
         <button @click="showStatsModal = false" class="text-slate-400 hover:text-white">✕</button>
       </div>
 
@@ -480,7 +687,7 @@
 
       <div class="text-xs text-slate-300 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 leading-relaxed space-y-1.5">
         <p class="font-bold text-indigo-300">🎙️ 老王深度表达心法：</p>
-        <p>短金句只能带来瞬间的多巴胺，只有沉浸朗读 10~20 分钟的高信噪比长篇原话，才能真正重塑你的语言神经回路，建立起面对任何大场面都能脱稿连续输出 15 分钟的顶级表达力！</p>
+        <p>口才是肌肉记忆。路上戴耳机他读一句你读一句，利用碎片时间完成神经重塑，每天 15 分钟，一个月脱胎换骨！</p>
       </div>
 
       <button @click="showStatsModal = false" class="w-full py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30">
@@ -522,6 +729,7 @@ const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
 
 createApp({
   setup() {
+    // 优先从全局 window.__WANG_CORPUS__ 同步获取 320 篇讲稿数据（彻底避免本地 file:// 协议 CORS 拦截）
     const corpusList = ref(window.__WANG_CORPUS__ || []);
     const allTags = ref(['全部标签', '定义类', '心法类', '底层逻辑类', '实战案例类', '方法论类', '心智成熟', '亲密关系', '商业认知']);
     const activeTag = ref('全部标签');
@@ -546,11 +754,7 @@ createApp({
     const toastMsg = ref('');
     const logs = ref([]);
 
-    const checkinItem = ref(null);
-    const checkinLevel = ref('medium');
-    const checkinStuckPoint = ref('');
-    const checkinInsight = ref('');
-
+    // 模式 1：看屏提词朗读
     const readingItem = ref(null);
     const readerScrollContainer = ref(null);
     const readerFontSize = ref(19);
@@ -560,6 +764,28 @@ createApp({
     const scrollSpeed = ref(1);
     let timerInterval = null;
     let autoScrollInterval = null;
+
+    // 模式 2：🎧 路上逐句跟读复诵（Shadowing）
+    const shadowItem = ref(null);
+    const sentenceList = ref([]);
+    const currentSentenceIdx = ref(0);
+    const shadowState = ref('IDLE'); // 'IDLE' | 'SPEAKING' | 'PAUSED_FOR_ME' | 'PAUSED'
+    const speechRate = ref(1.0); // 0.8, 1.0, 1.2
+    const pauseRatio = ref(1.2); // 1.0, 1.2, 1.5
+    const isPocketMode = ref(false);
+    const remainingPauseSec = ref('0.0');
+    const pauseProgressPercent = ref(100);
+    let pauseTimer = null;
+    let pauseInterval = null;
+    let sentenceStartTime = 0;
+    let lastTapTime = 0;
+
+    // 打卡录入
+    const checkinItem = ref(null);
+    const checkinLevel = ref('medium');
+    const checkinStuckPoint = ref('');
+    const checkinInsight = ref('');
+    const practiceMode = ref('reading');
 
     const showStatsModal = ref(false);
 
@@ -574,16 +800,14 @@ createApp({
       if (saved) {
         try { logs.value = JSON.parse(saved); } catch(e) {}
       }
-      // Load 320 corpus fallback
+      // 如果 window.__WANG_CORPUS__ 没加载上，再走 fetch 兜底
       if (!corpusList.value.length) {
         try {
           const res = await fetch('./data/corpus.json');
           if (res.ok) {
             corpusList.value = await res.json();
           }
-        } catch (err) {
-          console.error('Failed to fetch corpus.json', err);
-        }
+        } catch (err) {}
       }
 
       if ('serviceWorker' in navigator) {
@@ -592,11 +816,76 @@ createApp({
     });
 
     onUnmounted(() => {
-      clearInterval(timerInterval);
-      clearInterval(autoScrollInterval);
+      stopAllAudio();
     });
 
-    // 过滤
+    const stopAllAudio = () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      clearInterval(timerInterval);
+      clearInterval(autoScrollInterval);
+      clearTimeout(pauseTimer);
+      clearInterval(pauseInterval);
+    };
+
+    // 优雅提示音（Web Audio API 生成温和柔和的“叮”声）
+    const playDingSound = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + 0.22);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.26);
+      } catch (e) {}
+    };
+
+    // 智能切句算法：拆成 15~32 字适合跟读的节奏短句
+    const splitIntoSentences = (text) => {
+      if (!text) return [];
+      let clean = text
+        .replace(/###.*?\n/g, '')
+        .replace(/---\n/g, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .trim();
+      const rawParts = clean.split(/([。！？!?；;\n]+)/);
+      const result = [];
+      for (let i = 0; i < rawParts.length; i += 2) {
+        const chunk = (rawParts[i] || '').trim();
+        const punct = (rawParts[i + 1] || '').trim();
+        if (!chunk) continue;
+        let full = chunk + (punct.includes('\n') ? '。' : punct);
+        if (full.length <= 32) {
+          result.push(full);
+        } else {
+          const subChunks = full.split(/([，：:,、])/);
+          let temp = '';
+          for (let j = 0; j < subChunks.length; j += 2) {
+            const sub = (subChunks[j] || '').trim();
+            const subPunc = (subChunks[j + 1] || '').trim();
+            if (!sub) continue;
+            const part = sub + subPunc;
+            if (temp.length + part.length <= 28) {
+              temp += part;
+            } else {
+              if (temp) result.push(temp);
+              temp = part;
+            }
+          }
+          if (temp) result.push(temp);
+        }
+      }
+      return result.filter(s => s.trim().length > 1);
+    };
+
+    // 过滤与搜索
     const filteredCorpus = computed(() => {
       const q = searchQuery.value.trim().toLowerCase();
       return corpusList.value.filter(item => {
@@ -611,7 +900,6 @@ createApp({
       });
     });
 
-    // 分页切片展示
     const displayedCorpus = computed(() => {
       return filteredCorpus.value.slice(0, page.value * pageSize.value);
     });
@@ -623,6 +911,10 @@ createApp({
     const loadMore = () => {
       page.value++;
     };
+
+    const currentSentenceText = computed(() => {
+      return sentenceList.value[currentSentenceIdx.value] || '';
+    });
 
     const sortedLogs = computed(() => [...logs.value].reverse());
     const totalPracticeCount = computed(() => logs.value.length);
@@ -690,13 +982,159 @@ createApp({
       document.body.removeChild(ta);
     };
 
+    // ==========================================
+    // 🎧 路上跟读模式核心逻辑
+    // ==========================================
+    const startShadowingMode = (item) => {
+      stopAllAudio();
+      shadowItem.value = item;
+      sentenceList.value = splitIntoSentences(item.content);
+      currentSentenceIdx.value = 0;
+      speechSeconds.value = 0;
+      isPocketMode.value = false;
+      
+      // 开启秒表
+      timerInterval = setInterval(() => {
+        speechSeconds.value++;
+      }, 1000);
+
+      playCurrentSentence();
+    };
+
+    const closeShadowingMode = () => {
+      stopAllAudio();
+      shadowItem.value = null;
+    };
+
+    const playCurrentSentence = () => {
+      if (!window.speechSynthesis) {
+        showToast('当前浏览器暂不支持语音合成，请使用系统最新浏览器');
+        return;
+      }
+      window.speechSynthesis.cancel();
+      clearTimeout(pauseTimer);
+      clearInterval(pauseInterval);
+
+      if (currentSentenceIdx.value >= sentenceList.value.length) {
+        finishShadowingAndCheckin();
+        return;
+      }
+
+      const sentence = currentSentenceText.value;
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      utterance.lang = 'zh-CN';
+      utterance.rate = speechRate.value;
+
+      shadowState.value = 'SPEAKING';
+      sentenceStartTime = Date.now();
+
+      utterance.onend = () => {
+        if (shadowState.value === 'PAUSED') return;
+        // 播完一句，播放柔和转场叮声
+        playDingSound();
+
+        // 计算系统实际读这句耗费的秒数
+        const spokenSec = Math.max(1.5, (Date.now() - sentenceStartTime) / 1000);
+        const pauseDurationSec = spokenSec * pauseRatio.value;
+        const totalPauseMs = pauseDurationSec * 1000;
+        
+        shadowState.value = 'PAUSED_FOR_ME';
+        remainingPauseSec.value = pauseDurationSec.toFixed(1);
+        pauseProgressPercent.value = 100;
+
+        const pauseStartTime = Date.now();
+        pauseInterval = setInterval(() => {
+          const elapsed = Date.now() - pauseStartTime;
+          const left = Math.max(0, totalPauseMs - elapsed);
+          remainingPauseSec.value = (left / 1000).toFixed(1);
+          pauseProgressPercent.value = Math.max(0, (left / totalPauseMs) * 100);
+          if (left <= 0) {
+            clearInterval(pauseInterval);
+          }
+        }, 80);
+
+        pauseTimer = setTimeout(() => {
+          clearInterval(pauseInterval);
+          if (shadowState.value !== 'PAUSED') {
+            currentSentenceIdx.value++;
+            playCurrentSentence();
+          }
+        }, totalPauseMs);
+      };
+
+      utterance.onerror = () => {
+        shadowState.value = 'PAUSED';
+      };
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    const toggleShadowPlayPause = () => {
+      if (shadowState.value === 'PAUSED') {
+        shadowState.value = 'SPEAKING';
+        playCurrentSentence();
+      } else {
+        shadowState.value = 'PAUSED';
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        clearTimeout(pauseTimer);
+        clearInterval(pauseInterval);
+      }
+    };
+
+    const replayCurrentSentence = () => {
+      playCurrentSentence();
+    };
+
+    const nextSentence = () => {
+      if (currentSentenceIdx.value + 1 < sentenceList.value.length) {
+        currentSentenceIdx.value++;
+        playCurrentSentence();
+      }
+    };
+
+    const prevSentence = () => {
+      if (currentSentenceIdx.value > 0) {
+        currentSentenceIdx.value--;
+        playCurrentSentence();
+      }
+    };
+
+    const setSpeechRate = (r) => {
+      speechRate.value = r;
+      playCurrentSentence();
+    };
+
+    // 口袋模式盲操点击处理
+    const handlePocketClick = () => {
+      const now = Date.now();
+      if (now - lastTapTime < 350) {
+        // 双击：重读本句
+        replayCurrentSentence();
+        showToast('重听当前句');
+      } else {
+        // 单击：暂停 / 继续
+        toggleShadowPlayPause();
+      }
+      lastTapTime = now;
+    };
+
+    const finishShadowingAndCheckin = () => {
+      const item = shadowItem.value;
+      const duration = speechSeconds.value;
+      closeShadowingMode();
+      openCheckinModal(item, duration, 'shadowing');
+    };
+
+    // ==========================================
+    // 🎙️ 看屏提词朗读模式逻辑
+    // ==========================================
     const openReaderMode = (item) => {
+      stopAllAudio();
       readingItem.value = item;
       speechSeconds.value = 0;
       isTimerRunning.value = true;
       isAutoScrolling.value = false;
       
-      if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         speechSeconds.value++;
       }, 1000);
@@ -709,10 +1147,7 @@ createApp({
     };
 
     const closeReaderMode = () => {
-      clearInterval(timerInterval);
-      clearInterval(autoScrollInterval);
-      isTimerRunning.value = false;
-      isAutoScrolling.value = false;
+      stopAllAudio();
       readingItem.value = null;
     };
 
@@ -755,14 +1190,18 @@ createApp({
       const item = readingItem.value;
       const duration = speechSeconds.value;
       closeReaderMode();
-      openCheckinModal(item, duration);
+      openCheckinModal(item, duration, 'reading');
     };
 
-    const openCheckinModal = (item, duration = 0) => {
+    // ==========================================
+    // 复盘打卡
+    // ==========================================
+    const openCheckinModal = (item, duration = 0, mode = 'reading') => {
       checkinItem.value = item;
       checkinLevel.value = 'medium';
       checkinStuckPoint.value = '';
       checkinInsight.value = '';
+      practiceMode.value = mode;
       if (duration > 0) speechSeconds.value = duration;
     };
 
@@ -778,6 +1217,7 @@ createApp({
         category: checkinItem.value.category,
         tags: checkinItem.value.tags,
         level: checkinLevel.value,
+        mode: practiceMode.value,
         stuckPoint: checkinStuckPoint.value.trim(),
         insight: checkinInsight.value.trim(),
         date: dateStr,
@@ -812,7 +1252,7 @@ createApp({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `老王深度口才演练复盘_${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `老王口才复盘档案_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
     };
@@ -825,14 +1265,23 @@ createApp({
       getPreviewText, renderedContent,
       copyText, toastMsg,
       logs, sortedLogs, totalPracticeCount, streakDays,
+      // 模式 1
       readingItem, readerScrollContainer, readerFontSize,
       speechSeconds, isTimerRunning, isAutoScrolling, scrollSpeed,
       openReaderMode, closeReaderMode, toggleTimer, toggleAutoScroll,
-      formatTime, formatDuration, finishReadingAndCheckin,
-      checkinItem, checkinLevel, checkinStuckPoint, checkinInsight,
+      finishReadingAndCheckin,
+      // 模式 2 (路上跟读)
+      shadowItem, sentenceList, currentSentenceIdx, currentSentenceText,
+      shadowState, speechRate, pauseRatio, isPocketMode,
+      remainingPauseSec, pauseProgressPercent,
+      startShadowingMode, closeShadowingMode, toggleShadowPlayPause,
+      replayCurrentSentence, nextSentence, prevSentence, setSpeechRate,
+      handlePocketClick, finishShadowingAndCheckin,
+      // 打卡
+      checkinItem, checkinLevel, checkinStuckPoint, checkinInsight, practiceMode,
       levels, openCheckinModal, saveCheckin, deleteLog,
       getPracticedCount, getLevelInfo,
-      showStatsModal, exportData
+      showStatsModal, exportData, formatTime, formatDuration
     };
   }
 }).mount('#app');
