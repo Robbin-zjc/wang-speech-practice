@@ -146,7 +146,7 @@
       <div>
         <div class="flex items-center space-x-1.5">
           <h1 class="font-bold text-base tracking-wide text-white">老王原话朗读库</h1>
-          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">320篇 · 路上跟读版</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">340篇纯正原声 · 路上跟读版</span>
         </div>
         <p class="text-[11px] text-slate-400">支持“他读一句我读一句” · 解放双手双眼</p>
       </div>
@@ -169,13 +169,36 @@
       <input 
         v-model="searchQuery" 
         type="text" 
-        placeholder="🔍 搜索 320 篇讲稿（如：成熟、合伙人、搞钱、嫉妒、执行力）..." 
+        placeholder="🔍 搜索 340 篇真原话（如：成熟、合伙人、搞钱、嫉妒、吃太饱、体育老师）..." 
         class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500">
       <button 
         v-if="searchQuery" 
         @click="searchQuery = ''" 
         class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white">
         ✕
+      </button>
+    </div>
+  </section>
+
+  <!-- 语料篇幅与类型切换器 -->
+  <section class="px-4 pt-2.5 pb-2 bg-slate-900/60 border-b border-slate-800/60">
+    <div class="flex items-center justify-between mb-1.5 text-xs text-slate-400">
+      <span class="font-semibold text-amber-400 flex items-center space-x-1">
+        <span>⏱️</span>
+        <span>朗读时长 / 篇幅类型：</span>
+      </span>
+      <span class="text-[10px] text-slate-500">按碎片时间选择</span>
+    </div>
+    <div class="grid grid-cols-4 gap-1.5 text-xs">
+      <button
+        v-for="tp in allTypes"
+        :key="tp"
+        @click="activeType = tp; page = 1"
+        :class="['py-1.5 px-1 rounded-lg text-center font-medium transition-all text-xs truncate',
+          activeType === tp
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
+            : 'bg-slate-800/80 text-slate-300 hover:text-white border border-slate-700/60']">
+        {{ tp }}
       </button>
     </div>
   </section>
@@ -239,11 +262,17 @@
 
       <div>
         <div class="flex items-center justify-between text-xs mb-2.5 flex-wrap gap-1.5">
-          <div class="flex items-center space-x-1.5">
+          <div class="flex items-center space-x-1.5 flex-wrap gap-y-1">
+            <span :class="['px-2 py-0.5 rounded-md text-[11px] font-bold border',
+              item.type === '专题原话串联' ? 'bg-amber-950/90 text-amber-300 border-amber-600/70' :
+              item.type === '精悍短篇' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600/70' :
+              'bg-blue-950/90 text-blue-300 border-blue-600/70']">
+              {{ item.type || '原话切片' }}
+            </span>
             <span class="px-2.5 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800/60 font-medium text-[11px]">
               {{ item.category }}
             </span>
-            <span class="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800/40 text-[11px] font-semibold flex items-center space-x-1">
+            <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold flex items-center space-x-1">
               <span>⏱</span>
               <span>{{ item.readingMinutes }} ({{ item.wordCount }}字)</span>
             </span>
@@ -809,21 +838,41 @@ const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
 
 createApp({
   setup() {
-    // 优先从全局 window.__WANG_CORPUS__ 同步获取 320 篇讲稿数据（彻底避免本地 file:// 协议 CORS 拦截）
+    // 优先从全局 window.__WANG_CORPUS__ 同步获取 340 篇讲稿数据（彻底避免本地 file:// 协议 CORS 拦截）
     const corpusList = ref(window.__WANG_CORPUS__ || []);
-    const allTags = ref(['全部标签', '定义类', '心法类', '底层逻辑类', '实战案例类', '方法论类', '心智成熟', '亲密关系', '商业认知']);
-    const activeTag = ref('全部标签');
+    
+    const allTypes = ref(['全部篇幅', '🎯 专题串联', '⚡ 精悍短篇', '🎙️ 连贯长篇']);
+    const activeType = ref('全部篇幅');
 
     const categories = ref([
       '全部分类',
-      '心智成熟与人生底色',
-      '亲密关系与家庭伦理',
+      '心智成熟与硬汉底色',
       '商业认知与财富自由',
+      '亲密关系与家庭伦理',
+      '情绪内耗与去孩童化',
+      '两代关系与权责边界',
       'AI协作与新时代能力',
-      '自我管理与强人心法',
-      '两代关系与权责边界'
+      '自驱进化与反脆弱'
     ]);
     const activeCategory = ref('全部分类');
+
+    const allTags = ref([
+      '全部标签',
+      '专题原话串联',
+      '精悍短篇',
+      '连贯长篇',
+      '定义类',
+      '心法类',
+      '实战案例类',
+      '底层逻辑类',
+      '方法论类',
+      '成熟的定义',
+      '去孩童化',
+      '硬汉心法',
+      '搞钱认知',
+      '择偶心法'
+    ]);
+    const activeTag = ref('全部标签');
     const searchQuery = ref('');
     const currentTab = ref('corpus');
 
@@ -985,6 +1034,10 @@ createApp({
     const filteredCorpus = computed(() => {
       const q = searchQuery.value.trim().toLowerCase();
       return corpusList.value.filter(item => {
+        const matchType = activeType.value === '全部篇幅' ||
+          (activeType.value.includes('专题') && item.type === '专题原话串联') ||
+          (activeType.value.includes('短篇') && item.type === '精悍短篇') ||
+          (activeType.value.includes('长篇') && item.type === '连贯长篇');
         const matchCat = activeCategory.value === '全部分类' || item.category === activeCategory.value;
         const matchTag = activeTag.value === '全部标签' || (item.tags && item.tags.includes(activeTag.value));
         const matchSearch = !q || 
@@ -992,7 +1045,7 @@ createApp({
           item.highlight.toLowerCase().includes(q) || 
           (item.tags && item.tags.some(t => t.toLowerCase().includes(q))) ||
           item.content.toLowerCase().includes(q);
-        return matchCat && matchTag && matchSearch;
+        return matchType && matchCat && matchTag && matchSearch;
       });
     });
 
@@ -1020,6 +1073,7 @@ createApp({
     });
 
     const resetFilter = () => {
+      activeType.value = '全部篇幅';
       activeCategory.value = '全部分类';
       activeTag.value = '全部标签';
       searchQuery.value = '';
@@ -1033,19 +1087,20 @@ createApp({
     };
 
     const getPreviewText = (md) => {
-      return md.replace(/###.*?\n/g, '').replace(/---/g, '').replace(/\n+/g, ' ').slice(0, 160) + '...';
+      return md.replace(/【.*?】/g, '').replace(/###.*?\n/g, '').replace(/---/g, '').replace(/\n+/g, ' ').slice(0, 160) + '...';
     };
 
     const renderedContent = computed(() => {
       if (!readingItem.value) return '';
       let text = readingItem.value.content;
+      text = text.replace(/【(原话实录|连贯实录) · (.*?)】/g, '<div class="my-3 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-xs font-bold inline-flex items-center space-x-1.5"><span>🎙️</span><span>$1 · $2</span></div>');
       text = text.replace(/### (.*?)\n/g, '<h3>$1</h3>');
       text = text.replace(/#### (.*?)\n/g, '<h4 class="font-bold text-indigo-300 mt-4 mb-2">$1</h4>');
       text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-200 font-bold">$1</strong>');
       text = text.replace(/---\n/g, '<hr>');
       const paragraphs = text.split('\n\n');
       return paragraphs.map(p => {
-        if (p.startsWith('<h3>') || p.startsWith('<hr>') || p.startsWith('<h4')) return p;
+        if (p.startsWith('<div') || p.startsWith('<h3>') || p.startsWith('<hr>') || p.startsWith('<h4')) return p;
         return `<p>${p.replace(/\n/g, '<br>')}</p>`;
       }).join('');
     });
@@ -1376,7 +1431,7 @@ createApp({
     };
 
     return {
-      corpusList, allTags, activeTag,
+      corpusList, allTypes, activeType, allTags, activeTag,
       categories, activeCategory, searchQuery, currentTab,
       page, pageSize, hasMore, loadMore,
       filteredCorpus, displayedCorpus, resetFilter, expandedIds, toggleExpand,
