@@ -146,7 +146,7 @@
       <div>
         <div class="flex items-center space-x-1.5">
           <h1 class="font-bold text-base tracking-wide text-white">老王原话朗读库</h1>
-          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">340篇纯正原声 · 路上跟读版</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/60 text-indigo-300 border border-indigo-700/40">308篇纯正原声 · 路上跟读版</span>
         </div>
         <p class="text-[11px] text-slate-400">支持“他读一句我读一句” · 解放双手双眼</p>
       </div>
@@ -169,7 +169,7 @@
       <input 
         v-model="searchQuery" 
         type="text" 
-        placeholder="🔍 搜索 340 篇真原话（如：成熟、合伙人、搞钱、嫉妒、吃太饱、体育老师）..." 
+        placeholder="🔍 搜索 308 篇真原话（如：成熟、合伙人、搞钱、嫉妒、吃太饱、体育老师）..." 
         class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500">
       <button 
         v-if="searchQuery" 
@@ -277,8 +277,9 @@
               <span>{{ item.readingMinutes }} ({{ item.wordCount }}字)</span>
             </span>
           </div>
-          <span class="text-slate-400 text-[11px] truncate max-w-[180px]">
-            📍 {{ item.source }}
+          <span class="text-slate-400 text-[11px] flex items-center space-x-1">
+            <span>📍</span>
+            <span>{{ item.source }}</span>
           </span>
         </div>
 
@@ -294,22 +295,25 @@
           </span>
         </div>
 
-        <!-- 篇名大标题 -->
-        <h2 class="text-lg font-black text-slate-100 mb-3 leading-snug tracking-tight">
+        <!-- 篇名大标题（点击亦可直接展开全文） -->
+        <h2 
+          @click="toggleCardExpand(item.id)" 
+          class="text-lg font-black text-slate-100 mb-3 leading-snug tracking-tight cursor-pointer hover:text-indigo-300 transition" 
+          :title="isCardExpanded(item.id) ? '点击收起' : '点击展开阅读全文'">
           {{ item.title }}
         </h2>
 
         <!-- 核心金句高光段落 -->
-        <div class="bg-indigo-950/50 border-l-4 border-indigo-500 rounded-r-xl p-3 mb-4 text-xs sm:text-sm text-indigo-100 leading-relaxed font-normal shadow-inner">
+        <div class="bg-indigo-950/50 border-l-4 border-indigo-500 rounded-r-xl p-3 mb-3.5 text-xs sm:text-sm text-indigo-100 leading-relaxed font-normal shadow-inner">
           <div class="flex items-center space-x-1 text-indigo-400 font-bold text-xs mb-1">
             <span>💡</span>
             <span>老王原话核心论点：</span>
           </div>
-          <p class="italic">“{{ item.highlight }}”</p>
+          <p class="italic font-medium">“{{ item.highlight }}”</p>
         </div>
 
         <!-- 思考与论述提纲 -->
-        <div class="mb-4" v-if="item.outline && item.outline.length">
+        <div class="mb-3.5" v-if="item.outline && item.outline.length">
           <button 
             @click="toggleExpand(item.id)" 
             class="text-xs text-slate-400 hover:text-indigo-300 flex items-center space-x-1 py-1 font-medium transition">
@@ -323,9 +327,55 @@
           </div>
         </div>
 
-        <!-- 原话讲稿前段预览 -->
-        <div class="bg-slate-950/60 rounded-xl p-3 border border-slate-800/60 text-xs text-slate-400 line-clamp-3 leading-relaxed mb-4">
-          {{ getPreviewText(item.content) }}
+        <!-- 原话讲稿正文区域：支持内联完整展开 / 自然预览折叠 -->
+        <div class="mb-4">
+          <!-- 展开态：展示完整原话，舒适段落排版与高光渲染 -->
+          <div v-if="isCardExpanded(item.id)" class="bg-slate-950/90 rounded-2xl p-4 sm:p-5 border border-indigo-900/40 shadow-inner space-y-3.5">
+            <div class="flex items-center justify-between pb-2.5 border-b border-slate-800/80 text-xs text-indigo-300">
+              <div class="flex items-center space-x-1.5 font-bold">
+                <span>📖</span>
+                <span>完整原声讲稿（共 {{ item.wordCount }} 字 · 约 {{ item.readingMinutes }}）</span>
+              </div>
+              <button 
+                @click="toggleCardExpand(item.id)" 
+                class="text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/80 active:scale-95 transition flex items-center space-x-1">
+                <span>收起全文 ▴</span>
+              </button>
+            </div>
+
+            <!-- 渲染完整段落与高光排版 -->
+            <div 
+              class="text-xs sm:text-sm text-slate-200 leading-relaxed space-y-3 font-normal select-text article-body" 
+              v-html="renderCardContent(item.content)">
+            </div>
+
+            <!-- 底部收起条 -->
+            <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+              <span class="text-[11px] text-slate-500">🎉 本篇原话已完整展示</span>
+              <button 
+                @click="toggleCardExpand(item.id)" 
+                class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold py-1 px-3 rounded-lg bg-indigo-950/60 border border-indigo-800/60 active:scale-95 transition">
+                收起原话全文 ▴
+              </button>
+            </div>
+          </div>
+
+          <!-- 折叠态：自然开篇预览 + 展开阅读全部原话按钮 -->
+          <div v-else class="relative bg-slate-950/60 rounded-xl p-3.5 border border-slate-800/60">
+            <p class="text-xs text-slate-300 leading-relaxed font-normal">
+              {{ getNaturalPreview(item.content) }}
+            </p>
+            <div class="pt-2.5 flex items-center justify-between border-t border-slate-800/40 mt-2">
+              <span class="text-[10px] text-slate-500">
+                还有 {{ Math.max(0, item.wordCount - 160) }} 字未展开
+              </span>
+              <button 
+                @click="toggleCardExpand(item.id)" 
+                class="text-xs text-indigo-300 hover:text-white font-semibold flex items-center space-x-1 py-1 px-3 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/80 border border-indigo-700/60 active:scale-95 transition shadow-sm">
+                <span>📖 展开阅读全部原话（共 {{ item.wordCount }} 字）▾</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -491,9 +541,9 @@
     <div v-else class="flex-1 flex flex-col">
       <!-- 顶栏控制 -->
       <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div class="truncate max-w-[200px] sm:max-w-xs">
+        <div class="flex-1 min-w-0 pr-3">
           <span class="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">🎧 路上逐句跟读演练</span>
-          <h3 class="text-xs sm:text-sm font-bold text-white truncate">{{ shadowItem.title }}</h3>
+          <h3 class="text-xs sm:text-sm font-bold text-white line-clamp-1">{{ shadowItem.title }}</h3>
         </div>
         
         <div class="flex items-center space-x-2">
@@ -637,12 +687,12 @@
   <!-- ========================================================================= -->
   <div v-if="readingItem" class="fixed inset-0 z-50 bg-slate-950 flex flex-col">
     <header class="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
-      <div class="truncate max-w-[200px] sm:max-w-xs">
+      <div class="flex-1 min-w-0 pr-3">
         <span class="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">深度看屏提词朗读</span>
-        <h3 class="text-xs sm:text-sm font-bold text-white truncate">{{ readingItem.title }}</h3>
+        <h3 class="text-xs sm:text-sm font-bold text-white line-clamp-1">{{ readingItem.title }}</h3>
       </div>
       
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center space-x-2 shrink-0">
         <div class="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800 text-xs font-mono text-indigo-300 border border-slate-700">
           <span>⏱</span>
           <span class="font-bold">{{ formatTime(speechSeconds) }}</span>
@@ -679,8 +729,9 @@
         </select>
       </div>
 
-      <button @click="copyText(readingItem.content, '长篇讲稿已完整复制')" class="text-xs text-indigo-400 hover:text-indigo-300">
-        📋 复制全文
+      <button @click="copyText(readingItem.content, '长篇讲稿已完整复制')" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1">
+        <span>📋</span>
+        <span>复制全文</span>
       </button>
     </div>
 
@@ -689,10 +740,18 @@
       class="flex-1 overflow-y-auto px-5 sm:px-8 py-6 max-w-2xl mx-auto w-full article-body" 
       :style="{ fontSize: readerFontSize + 'px' }">
       
-      <div class="mb-6 p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50">
-        <h4 class="text-indigo-300 font-bold text-sm mb-1.5">🎙️ 口才朗读建议：</h4>
-        <p class="text-xs text-slate-300 leading-relaxed">
-          全篇约 <strong class="text-indigo-300">{{ readingItem.wordCount }}字</strong>，建议保持沉稳、坚定的语调进行 10~20 分钟不间断演练。
+      <div class="mb-6 p-4 rounded-2xl bg-indigo-950/40 border border-indigo-800/50 space-y-2">
+        <div class="flex items-center space-x-2 text-xs flex-wrap gap-1">
+          <span class="px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200 border border-indigo-700/60 text-[11px] font-bold">{{ readingItem.type || '老王原声' }}</span>
+          <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">{{ readingItem.category }}</span>
+          <span class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-[11px] font-semibold">⏱ {{ readingItem.readingMinutes }} ({{ readingItem.wordCount }}字)</span>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center space-x-1">
+          <span>📍</span>
+          <span>选自：{{ readingItem.source }}</span>
+        </div>
+        <p class="text-xs text-indigo-200/90 leading-relaxed pt-1 border-t border-indigo-900/40 mt-2">
+          🎙️ <strong class="text-indigo-300">朗读建议：</strong>建议保持沉稳、坚定的语调进行 10~20 分钟不间断演练，读到卡壳处放慢语速细嚼慢咽。
         </p>
       </div>
 
@@ -1086,23 +1145,57 @@ createApp({
       expandedIds.value = s;
     };
 
-    const getPreviewText = (md) => {
-      return md.replace(/【.*?】/g, '').replace(/###.*?\n/g, '').replace(/---/g, '').replace(/\n+/g, ' ').slice(0, 160) + '...';
+    // 卡片内联展开/折叠完整原话状态管理
+    const expandedCardIds = ref(new Set());
+    const toggleCardExpand = (id) => {
+      const s = new Set(expandedCardIds.value);
+      s.has(id) ? s.delete(id) : s.add(id);
+      expandedCardIds.value = s;
+    };
+    const isCardExpanded = (id) => expandedCardIds.value.has(id);
+
+    // 自然预览截取：保留完整语义句子，避免生硬半句截断
+    const getNaturalPreview = (md) => {
+      if (!md) return '';
+      let clean = md
+        .replace(/【.*?】/g, '')
+        .replace(/###.*?\n/g, '')
+        .replace(/---\n/g, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\n+/g, ' ')
+        .trim();
+      if (clean.length <= 160) return clean;
+      let slice = clean.slice(0, 160);
+      let lastPunc = Math.max(slice.lastIndexOf('，'), slice.lastIndexOf('。'), slice.lastIndexOf('！'), slice.lastIndexOf('？'), slice.lastIndexOf('；'));
+      if (lastPunc > 90) {
+        return slice.slice(0, lastPunc + 1);
+      }
+      return slice + '...';
+    };
+
+    const getPreviewText = (md) => getNaturalPreview(md);
+
+    // 格式化原话文本为干净段落和高亮排版
+    const renderCardContent = (text) => {
+      if (!text) return '';
+      let html = text;
+      html = html.replace(/【(原话实录|连贯实录) · (.*?)】/g, '<div class="my-2.5 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-xs font-bold inline-flex items-center space-x-1.5"><span>🎙️</span><span>$1 · $2</span></div>');
+      html = html.replace(/### (.*?)\n/g, '<h3 class="text-sm font-bold text-indigo-300 mt-3.5 mb-1.5">$1</h3>');
+      html = html.replace(/#### (.*?)\n/g, '<h4 class="text-xs font-bold text-indigo-300 mt-2.5 mb-1">$1</h4>');
+      html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-200 font-bold">$1</strong>');
+      html = html.replace(/---\n/g, '<hr class="border-slate-800 my-3">');
+      const paragraphs = html.split('\n\n');
+      return paragraphs.map(p => {
+        p = p.trim();
+        if (!p) return '';
+        if (p.startsWith('<div') || p.startsWith('<h3') || p.startsWith('<hr') || p.startsWith('<h4')) return p;
+        return `<p class="leading-relaxed mb-3 text-slate-200 text-xs sm:text-sm">${p.replace(/\n/g, '<br>')}</p>`;
+      }).join('');
     };
 
     const renderedContent = computed(() => {
       if (!readingItem.value) return '';
-      let text = readingItem.value.content;
-      text = text.replace(/【(原话实录|连贯实录) · (.*?)】/g, '<div class="my-3 px-3 py-1.5 rounded-lg bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 text-xs font-bold inline-flex items-center space-x-1.5"><span>🎙️</span><span>$1 · $2</span></div>');
-      text = text.replace(/### (.*?)\n/g, '<h3>$1</h3>');
-      text = text.replace(/#### (.*?)\n/g, '<h4 class="font-bold text-indigo-300 mt-4 mb-2">$1</h4>');
-      text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-indigo-200 font-bold">$1</strong>');
-      text = text.replace(/---\n/g, '<hr>');
-      const paragraphs = text.split('\n\n');
-      return paragraphs.map(p => {
-        if (p.startsWith('<div') || p.startsWith('<h3>') || p.startsWith('<hr>') || p.startsWith('<h4')) return p;
-        return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-      }).join('');
+      return renderCardContent(readingItem.value.content);
     });
 
     const showToast = (msg) => {
@@ -1434,7 +1527,10 @@ createApp({
       corpusList, allTypes, activeType, allTags, activeTag,
       categories, activeCategory, searchQuery, currentTab,
       page, pageSize, hasMore, loadMore,
-      filteredCorpus, displayedCorpus, resetFilter, expandedIds, toggleExpand,
+      filteredCorpus, displayedCorpus, resetFilter, 
+      expandedIds, toggleExpand,
+      expandedCardIds, toggleCardExpand, isCardExpanded,
+      getNaturalPreview, renderCardContent,
       getPreviewText, renderedContent,
       copyText, toastMsg,
       logs, sortedLogs, totalPracticeCount, streakDays,
