@@ -516,11 +516,17 @@
 
         <div>
           <div class="text-sm font-semibold text-slate-300 mb-1">
-            <span v-if="shadowState === 'SPEAKING'">老王示范朗读中...</span>
-            <span v-else-if="shadowState === 'PAUSED_FOR_ME'" class="text-emerald-400 font-bold">轮到你读（剩余 {{ remainingPauseSec }}s）</span>
-            <span v-else-if="shadowState === 'PAUSED'">已暂停</span>
+            <template v-if="shadowMode === 'CONTINUOUS'">
+              <span v-if="shadowState === 'SPEAKING'" class="text-emerald-400 font-bold">老王示范持续朗读中 · 随声跟读</span>
+              <span v-else>已暂停</span>
+            </template>
+            <template v-else>
+              <span v-if="shadowState === 'SPEAKING'">老王示范朗读中...</span>
+              <span v-else-if="shadowState === 'PAUSED_FOR_ME'" class="text-emerald-400 font-bold">轮到你读（剩余 {{ remainingPauseSec }}s）</span>
+              <span v-else>已暂停</span>
+            </template>
           </div>
-          <p class="text-xs text-slate-500">第 {{ currentSentenceIdx + 1 }} / {{ sentenceList.length }} 句 · 路上听读</p>
+          <p class="text-xs text-slate-500">第 {{ currentSentenceIdx + 1 }} / {{ sentenceList.length }} 句 · {{ shadowMode === 'CONTINUOUS' ? '⚡ 连续流畅跟读' : '☕ 留白复诵' }}</p>
         </div>
 
         <div class="pt-6 text-[11px] text-slate-600 space-y-1">
@@ -559,14 +565,33 @@
         </div>
       </header>
 
-      <!-- 调节工具栏：语速 + 留白倍率 -->
-      <div class="bg-slate-900/60 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-2">
+      <!-- 调节工具栏：跟读模式 + 语速 + 留白 + 声音 -->
+      <div class="bg-slate-900/60 border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between text-xs text-slate-300 flex-wrap gap-2">
+        <!-- 模式切换：连续跟读 (0留白) vs 留白复诵 -->
+        <div class="flex items-center space-x-1.5">
+          <span class="text-[11px] text-slate-400">模式:</span>
+          <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <button 
+              @click="setShadowMode('CONTINUOUS')" 
+              :class="['px-2.5 py-1 rounded text-[11px] font-bold transition flex items-center space-x-1',
+                shadowMode === 'CONTINUOUS' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200']">
+              <span>⚡ 连续跟读 (0留白)</span>
+            </button>
+            <button 
+              @click="setShadowMode('PAUSE')" 
+              :class="['px-2.5 py-1 rounded text-[11px] font-bold transition flex items-center space-x-1',
+                shadowMode === 'PAUSE' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200']">
+              <span>☕ 留白复诵</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 语速选择 -->
         <div class="flex items-center space-x-1.5">
           <span class="text-[11px] text-slate-400">语速:</span>
           <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
             <button 
-              v-for="r in [0.8, 1.0, 1.2]" 
+              v-for="r in [0.85, 1.0, 1.15]" 
               :key="r"
               @click="setSpeechRate(r)"
               :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition',
@@ -576,12 +601,12 @@
           </div>
         </div>
 
-        <!-- 留白倍率选择 -->
-        <div class="flex items-center space-x-1.5">
-          <span class="text-[11px] text-slate-400">留白倍率:</span>
+        <!-- 留白倍率（仅在留白模式下展示） -->
+        <div v-if="shadowMode === 'PAUSE'" class="flex items-center space-x-1.5">
+          <span class="text-[11px] text-slate-400">留白:</span>
           <div class="flex bg-slate-800 rounded-lg p-0.5 border border-slate-700">
             <button 
-              v-for="p in [1.0, 1.2, 1.5]" 
+              v-for="p in [0.8, 1.0, 1.2]" 
               :key="p"
               @click="pauseRatio = p"
               :class="['px-2 py-0.5 rounded text-[10px] font-semibold transition',
@@ -589,6 +614,19 @@
               {{ p }}x
             </button>
           </div>
+        </div>
+
+        <!-- 声音音色选择（支持 Microsoft Natural 云希/云扬/云健/晓晓 等自然男声/女声） -->
+        <div v-if="availableVoices.length > 1" class="flex items-center space-x-1">
+          <span class="text-[11px] text-slate-400">声音:</span>
+          <select 
+            v-model="selectedVoiceURI" 
+            @change="onVoiceChange"
+            class="bg-slate-800 text-[11px] text-indigo-300 rounded px-2 py-1 border border-slate-700 focus:outline-none max-w-[130px] truncate">
+            <option v-for="v in availableVoices" :key="v.voiceURI" :value="v.voiceURI">
+              {{ getVoiceDisplayName(v) }}
+            </option>
+          </select>
         </div>
 
         <div class="text-[11px] text-slate-400">
@@ -601,31 +639,44 @@
         
         <!-- 状态指示徽章 -->
         <div class="text-center">
-          <div v-if="shadowState === 'SPEAKING'" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60 text-xs font-semibold animate-pulse">
-            <span>🔊</span>
-            <span>老王示范朗读中，请仔细听...</span>
-          </div>
-          <div v-else-if="shadowState === 'PAUSED_FOR_ME'" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/80 text-xs font-bold animate-pulse-glow">
-            <span>🎙️</span>
-            <span>轮到你读！倒计时 {{ remainingPauseSec }} 秒</span>
-          </div>
-          <div v-else class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-semibold">
-            <span>⏸ 已暂停</span>
-          </div>
+          <template v-if="shadowMode === 'CONTINUOUS'">
+            <div v-if="shadowState === 'SPEAKING'" class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-600/70 text-xs font-bold animate-pulse shadow-sm">
+              <span>🔊</span>
+              <span>老王示范持续朗读中 · 请随声跟读</span>
+            </div>
+            <div v-else class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-semibold">
+              <span>⏸ 已暂停</span>
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="shadowState === 'SPEAKING'" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/60 text-xs font-semibold animate-pulse">
+              <span>🔊</span>
+              <span>老王示范朗读中，请仔细听...</span>
+            </div>
+            <div v-else-if="shadowState === 'PAUSED_FOR_ME'" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-600/80 text-xs font-bold animate-pulse shadow-sm">
+              <span>🎙️</span>
+              <span>轮到你读！倒计时 {{ remainingPauseSec }} 秒</span>
+            </div>
+            <div v-else class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-400 text-xs font-semibold">
+              <span>⏸ 已暂停</span>
+            </div>
+          </template>
         </div>
 
         <!-- 当前句大字聚焦卡片 -->
-        <div class="bg-slate-900 rounded-3xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden transition-all duration-300">
-          <div class="text-xs text-slate-500 mb-2 font-mono">
-            第 {{ currentSentenceIdx + 1 }} 句 · 建议大声跟读
+        <div class="bg-slate-900 rounded-3xl p-6 border shadow-2xl relative overflow-hidden transition-all duration-300"
+          :class="shadowMode === 'CONTINUOUS' ? 'border-emerald-700/50 shadow-emerald-950/20' : 'border-slate-800'">
+          <div class="text-xs text-slate-500 mb-2 font-mono flex items-center justify-between">
+            <span>第 {{ currentSentenceIdx + 1 }} 句 · {{ shadowMode === 'CONTINUOUS' ? '随声连续跟读' : '建议大声朗读' }}</span>
+            <span v-if="shadowMode === 'CONTINUOUS'" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-semibold">⚡ 0留白流畅版</span>
           </div>
           <p class="text-xl sm:text-2xl font-bold leading-relaxed tracking-wide transition-colors"
-            :class="shadowState === 'PAUSED_FOR_ME' ? 'text-emerald-300' : 'text-slate-100'">
+            :class="shadowMode === 'CONTINUOUS' ? 'text-slate-100' : (shadowState === 'PAUSED_FOR_ME' ? 'text-emerald-300' : 'text-slate-100')">
             {{ currentSentenceText }}
           </p>
 
-          <!-- 留白倒计时进度条 -->
-          <div v-if="shadowState === 'PAUSED_FOR_ME'" class="mt-5 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+          <!-- 留白倒计时进度条（仅在 PAUSE 模式下展示） -->
+          <div v-if="shadowMode === 'PAUSE' && shadowState === 'PAUSED_FOR_ME'" class="mt-5 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
             <div 
               class="h-full bg-emerald-500 transition-all duration-100"
               :style="{ width: pauseProgressPercent + '%' }"></div>
@@ -958,8 +1009,11 @@ createApp({
     const sentenceList = ref([]);
     const currentSentenceIdx = ref(0);
     const shadowState = ref('IDLE'); // 'IDLE' | 'SPEAKING' | 'PAUSED_FOR_ME' | 'PAUSED'
-    const speechRate = ref(1.0); // 0.8, 1.0, 1.2
-    const pauseRatio = ref(1.2); // 1.0, 1.2, 1.5
+    const shadowMode = ref('CONTINUOUS'); // 'CONTINUOUS' (0留白随声跟读) | 'PAUSE' (留白复诵)
+    const availableVoices = ref([]);
+    const selectedVoiceURI = ref('');
+    const speechRate = ref(1.0); // 0.85, 1.0, 1.15
+    const pauseRatio = ref(1.0); // 0.8, 1.0, 1.2
     const isPocketMode = ref(false);
     const remainingPauseSec = ref('0.0');
     const pauseProgressPercent = ref(100);
@@ -1011,6 +1065,14 @@ createApp({
         }).catch(() => {});
       }
 
+      // 初始化语音引擎与发音人
+      if (window.speechSynthesis) {
+        initVoices();
+        if (window.speechSynthesis.onvoiceschanged !== undefined) {
+          window.speechSynthesis.onvoiceschanged = initVoices;
+        }
+      }
+
       // 挂载完毕后平滑淡出并移除启动 Loading 蒙层
       const preloader = document.getElementById('app-preloader');
       if (preloader) {
@@ -1023,6 +1085,49 @@ createApp({
       stopAllAudio();
     });
 
+    const initVoices = () => {
+      if (!window.speechSynthesis) return;
+      const voices = window.speechSynthesis.getVoices() || [];
+      const zhVoices = voices.filter(v => v.lang && (v.lang.includes('zh') || v.lang.includes('cmn') || v.lang.includes('Chinese')));
+      availableVoices.value = zhVoices.length ? zhVoices : voices;
+
+      if (!selectedVoiceURI.value && zhVoices.length > 0) {
+        // 智能优选：优先微软自然男声（云希/云扬/康康/自然）
+        const preferredMale = zhVoices.find(v => 
+          /yunxi|云希|yunyang|云扬|kangkang|康康|natural male/i.test(v.name)
+        );
+        const naturalVoice = zhVoices.find(v => /natural|online|microsoft/i.test(v.name));
+        const defaultChoice = preferredMale || naturalVoice || zhVoices[0];
+        selectedVoiceURI.value = defaultChoice.voiceURI;
+      }
+    };
+
+    const getVoiceDisplayName = (v) => {
+      let name = v.name || '默认声音';
+      if (/yunxi|云希/i.test(name)) return '云希 (自然男声·推荐)';
+      if (/yunyang|云扬/i.test(name)) return '云扬 (专业男声)';
+      if (/xiaoxiao|晓晓/i.test(name)) return '晓晓 (自然女声)';
+      if (/kangkang|康康/i.test(name)) return '康康 (男声)';
+      if (/natural/i.test(name)) return name.replace(/Microsoft |Online \(Natural\) - /gi, '').trim() + ' (自然)';
+      return name.replace(/Microsoft |Google |Chinese /gi, '').replace(/\(zh-CN\)/gi, '').trim() || name;
+    };
+
+    const onVoiceChange = () => {
+      if (shadowState.value === 'SPEAKING') {
+        playCurrentSentence();
+      }
+    };
+
+    const setShadowMode = (mode) => {
+      shadowMode.value = mode;
+      if (mode === 'CONTINUOUS' && shadowState.value === 'PAUSED_FOR_ME') {
+        clearTimeout(pauseTimer);
+        clearInterval(pauseInterval);
+        currentSentenceIdx.value++;
+        playCurrentSentence();
+      }
+    };
+
     const stopAllAudio = () => {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
       clearInterval(timerInterval);
@@ -1031,7 +1136,7 @@ createApp({
       clearInterval(pauseInterval);
     };
 
-    // 优雅提示音（Web Audio API 生成温和柔和的“叮”声）
+    // 优雅提示音（Web Audio API 生成温和柔和的“叮”声，仅留白模式启用）
     const playDingSound = () => {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1051,10 +1156,11 @@ createApp({
       } catch (e) {}
     };
 
-    // 智能切句算法：拆成 15~32 字适合跟读的节奏短句
+    // 智能切句算法：以完整语意句为单位（30~55字），保留逗号自然起伏，避免碎切导致的TTS机械顿挫
     const splitIntoSentences = (text) => {
       if (!text) return [];
       let clean = text
+        .replace(/【.*?】/g, '')
         .replace(/###.*?\n/g, '')
         .replace(/---\n/g, '')
         .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -1066,9 +1172,10 @@ createApp({
         const punct = (rawParts[i + 1] || '').trim();
         if (!chunk) continue;
         let full = chunk + (punct.includes('\n') ? '。' : punct);
-        if (full.length <= 32) {
+        if (full.length <= 55) {
           result.push(full);
         } else {
+          // 仅在超长句（> 55字）时才在逗号或顿号处拆分成更自然的语义段落
           const subChunks = full.split(/([，：:,、])/);
           let temp = '';
           for (let j = 0; j < subChunks.length; j += 2) {
@@ -1076,7 +1183,7 @@ createApp({
             const subPunc = (subChunks[j + 1] || '').trim();
             if (!sub) continue;
             const part = sub + subPunc;
-            if (temp.length + part.length <= 28) {
+            if (temp.length + part.length <= 48) {
               temp += part;
             } else {
               if (temp) result.push(temp);
@@ -1269,12 +1376,31 @@ createApp({
       utterance.lang = 'zh-CN';
       utterance.rate = speechRate.value;
 
+      // 绑定选中的自然声音
+      if (selectedVoiceURI.value && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices();
+        const v = voices.find(item => item.voiceURI === selectedVoiceURI.value);
+        if (v) utterance.voice = v;
+      }
+
       shadowState.value = 'SPEAKING';
       sentenceStartTime = Date.now();
 
       utterance.onend = () => {
         if (shadowState.value === 'PAUSED') return;
-        // 播完一句，播放柔和转场叮声
+
+        // ⚡ 连续跟读模式（0留白，不响叮声，约120ms自然换气微停顿后平滑衔接下一句）
+        if (shadowMode.value === 'CONTINUOUS') {
+          pauseTimer = setTimeout(() => {
+            if (shadowState.value !== 'PAUSED') {
+              currentSentenceIdx.value++;
+              playCurrentSentence();
+            }
+          }, 120);
+          return;
+        }
+
+        // ☕ 留白复诵模式（播放柔和叮声转场，倒计时留白供跟读复诵）
         playDingSound();
 
         // 计算系统实际读这句耗费的秒数
@@ -1542,7 +1668,9 @@ createApp({
       finishReadingAndCheckin,
       // 模式 2 (路上跟读)
       shadowItem, sentenceList, currentSentenceIdx, currentSentenceText,
-      shadowState, speechRate, pauseRatio, isPocketMode,
+      shadowState, shadowMode, setShadowMode,
+      availableVoices, selectedVoiceURI, getVoiceDisplayName, onVoiceChange,
+      speechRate, pauseRatio, isPocketMode,
       remainingPauseSec, pauseProgressPercent,
       startShadowingMode, closeShadowingMode, toggleShadowPlayPause,
       replayCurrentSentence, nextSentence, prevSentence, setSpeechRate,
