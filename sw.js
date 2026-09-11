@@ -1,17 +1,18 @@
-// Simple Service Worker for offline capability
-const CACHE_NAME = 'wang-speech-v1';
+// Network-First Service Worker for Wang Speech Practice v4
+const CACHE_NAME = 'wang-speech-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './data/corpus.js',
   './data/corpus.json'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
   self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
+  );
 });
 
 self.addEventListener('activate', (e) => {
@@ -19,16 +20,32 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
-          if (k !== CACHE_NAME) return caches.delete(k);
+          if (k !== CACHE_NAME) {
+            return caches.delete(k);
+          }
         })
       );
     })
   );
-  self.clients.claim();
+  return self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+
   e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
+    fetch(e.request)
+      .then((networkRes) => {
+        if (networkRes && networkRes.status === 200) {
+          const resClone = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, resClone);
+          });
+        }
+        return networkRes;
+      })
+      .catch(() => {
+        return caches.match(e.request);
+      })
   );
 });

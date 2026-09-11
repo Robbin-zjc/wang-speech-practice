@@ -75,12 +75,14 @@
         <p class="text-[11px] text-slate-400">支持“他读一句我读一句” · 解放双手双眼</p>
       </div>
     </div>
-    <div class="flex items-center space-x-2">
-      <button @click="showStatsModal = true" class="flex items-center space-x-1 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-indigo-300 active:scale-95 transition shadow-sm">
+    <div class="flex items-center space-x-1.5">
+      <button @click="forceUpdateApp" title="清理缓存刷新最新版" class="px-2 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-slate-300 hover:text-white active:scale-95 transition flex items-center space-x-1">
+        <span>🔄</span>
+        <span class="text-[10px]">刷新最新版</span>
+      </button>
+      <button @click="showStatsModal = true" class="flex items-center space-x-1 px-2.5 py-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-indigo-300 active:scale-95 transition shadow-sm">
         <span>🔥</span>
         <span class="font-bold">{{ streakDays }}天</span>
-        <span class="text-slate-600">|</span>
-        <span>已练{{ totalPracticeCount }}次</span>
       </button>
     </div>
   </header>
@@ -811,7 +813,9 @@ createApp({
       }
 
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.register('./sw.js?v=4').then(reg => {
+          reg.update().catch(() => {});
+        }).catch(() => {});
       }
     });
 
@@ -1247,14 +1251,26 @@ createApp({
       return levels.find(l => l.val === lvl) || levels[1];
     };
 
-    const exportData = () => {
-      const blob = new Blob([JSON.stringify(logs.value, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `老王口才复盘档案_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+    const forceUpdateApp = async () => {
+      showToast('正在清理缓存并同步最新版本...');
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        } catch (e) {}
+      }
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        } catch (e) {}
+      }
+      setTimeout(() => {
+        const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
+        window.location.replace(cleanUrl);
+      }, 400);
     };
 
     return {
@@ -1265,6 +1281,7 @@ createApp({
       getPreviewText, renderedContent,
       copyText, toastMsg,
       logs, sortedLogs, totalPracticeCount, streakDays,
+      forceUpdateApp,
       // 模式 1
       readingItem, readerScrollContainer, readerFontSize,
       speechSeconds, isTimerRunning, isAutoScrolling, scrollSpeed,
