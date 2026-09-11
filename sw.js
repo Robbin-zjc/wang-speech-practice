@@ -1,9 +1,11 @@
-// Network-First Service Worker for Wang Speech Practice v4
-const CACHE_NAME = 'wang-speech-v4';
+// Network-First Service Worker for Wang Speech Practice v5
+const CACHE_NAME = 'wang-speech-v5';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './js/tailwind.js',
+  './js/vue.global.prod.js',
   './data/corpus.js',
   './data/corpus.json'
 ];

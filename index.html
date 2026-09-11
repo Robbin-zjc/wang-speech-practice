@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.json">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="./js/tailwind.js"></script>
+  <script src="./js/vue.global.prod.js"></script>
   <!-- 离线本地数据双保险 -->
   <script src="./data/corpus.js"></script>
   <script>
@@ -813,7 +813,7 @@ createApp({
       }
 
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js?v=4').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=5').then(reg => {
           reg.update().catch(() => {});
         }).catch(() => {});
       }
@@ -1302,6 +1302,17 @@ createApp({
     };
   }
 }).mount('#app');
+</script>
+<script>
+// 兜底保护：如果因任何极端异常导致 Vue 未能挂载，自动移除 v-cloak 避免黑屏
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    var el = document.getElementById('app');
+    if (el && el.hasAttribute('v-cloak')) {
+      el.removeAttribute('v-cloak');
+    }
+  }, 1200);
+});
 </script>
 </body>
 </html>
