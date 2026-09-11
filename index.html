@@ -8,10 +8,55 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.json">
+  <!-- 早期缓存自愈与全局兜底机制 -->
+  <script>
+    (function() {
+      var search = window.location.search || '';
+      if (search.indexOf('clean') !== -1 || search.indexOf('reset') !== -1) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            for (var i = 0; i < regs.length; i++) regs[i].unregister();
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
+          });
+        }
+      }
+    })();
+    window.cleanAndReload = function() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) regs[i].unregister();
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
+        });
+      }
+      setTimeout(function() {
+        window.location.replace(window.location.origin + window.location.pathname + '?clean=' + Date.now());
+      }, 300);
+    };
+    window.addEventListener('error', function(e) {
+      console.error('Fatal runtime error:', e);
+      var p = document.getElementById('app-preloader');
+      if (p) {
+        p.innerHTML = '<div style="max-width:320px;margin:20px;padding:24px;background:#1e293b;border:1px solid #ef4444;border-radius:16px;text-align:center;color:#fff;box-shadow:0 12px 30px rgba(0,0,0,0.5);">' +
+          '<div style="font-size:36px;margin-bottom:10px;">⚠️</div>' +
+          '<div style="font-size:16px;font-weight:bold;margin-bottom:6px;color:#fca5a5;">检测到手机浏览器旧缓存冲突</div>' +
+          '<div style="font-size:12px;color:#94a3b8;margin-bottom:18px;line-height:1.5;">浏览器暂存了之前的旧代码，请点击下方按钮一键清理并加载最新版：</div>' +
+          '<button onclick="window.cleanAndReload()" style="background:#4f46e5;color:white;padding:10px 20px;border-radius:10px;font-size:14px;border:none;font-weight:bold;cursor:pointer;width:100%;">' +
+          '🔄 一键清除缓存并进入最新版' +
+          '</button>' +
+        '</div>';
+      }
+    });
+  </script>
   <script src="./js/tailwind.js"></script>
   <script src="./js/vue.global.prod.js"></script>
-  <!-- 离线本地数据双保险 -->
-  <script src="./data/corpus.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -59,6 +104,37 @@
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col selection:bg-indigo-500 selection:text-white">
+
+<!-- 极速启动 Loading 蒙层（纯 CSS 零依赖，彻底杜绝黑屏假死） -->
+<div id="app-preloader" style="position:fixed;top:0;left:0;right:0;bottom:0;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#f8fafc;transition:opacity 0.25s ease;">
+  <div style="width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;box-shadow:0 12px 24px rgba(99,102,241,0.4);margin-bottom:18px;">
+    王
+  </div>
+  <div style="font-size:16px;font-weight:700;letter-spacing:0.5px;color:#ffffff;margin-bottom:6px;">老王口才深度演练</div>
+  <div style="font-size:12px;color:#94a3b8;margin-bottom:22px;">正在初始化 320 篇语料与跟读引擎...</div>
+  <div style="width:160px;height:4px;background:#1e293b;border-radius:999px;overflow:hidden;position:relative;">
+    <div style="width:50%;height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:999px;animation:loader-bar 1.2s infinite ease-in-out;"></div>
+  </div>
+  <style>
+    @keyframes loader-bar {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(250%); }
+    }
+  </style>
+  <div id="preloader-timeout-box" style="display:none;margin-top:28px;text-align:center;">
+    <p style="font-size:11px;color:#64748b;margin-bottom:8px;">如果手机网络较慢长时间停留在此：</p>
+    <button onclick="window.cleanAndReload()" style="padding:7px 16px;background:#1e293b;border:1px solid #475569;color:#cbd5e1;border-radius:8px;font-size:12px;cursor:pointer;">
+      🔄 强制刷新最新版
+    </button>
+  </div>
+</div>
+<script>
+  setTimeout(function() {
+    var box = document.getElementById('preloader-timeout-box');
+    if (box) box.style.display = 'block';
+  }, 4000);
+</script>
+
 <div id="app" v-cloak class="flex-1 flex flex-col max-w-2xl w-full mx-auto pb-28">
 
   <!-- 顶部状态栏 -->
@@ -726,6 +802,8 @@
 
 </div>
 
+<!-- 320 篇讲稿本地离线核心语料库 -->
+<script src="./data/corpus.js"></script>
 <script>
 const { createApp, ref, computed, onMounted, onUnmounted, nextTick } = Vue;
 
@@ -802,20 +880,34 @@ createApp({
       if (saved) {
         try { logs.value = JSON.parse(saved); } catch(e) {}
       }
-      // 如果 window.__WANG_CORPUS__ 没加载上，再走 fetch 兜底
+      // 检查语料是否就绪，双重保险
       if (!corpusList.value.length) {
-        try {
-          const res = await fetch('./data/corpus.json');
-          if (res.ok) {
-            corpusList.value = await res.json();
-          }
-        } catch (err) {}
+        if (window.__WANG_CORPUS__ && window.__WANG_CORPUS__.length) {
+          corpusList.value = window.__WANG_CORPUS__;
+        } else {
+          try {
+            const res = await fetch('./data/corpus.json');
+            if (res.ok) {
+              corpusList.value = await res.json();
+            }
+          } catch (err) {}
+        }
       }
 
+      // 彻底注销任何旧 Service Worker，消除手机端顽固离线旧缓存
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js?v=5').then(reg => {
-          reg.update().catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (const reg of regs) {
+            reg.unregister();
+          }
         }).catch(() => {});
+      }
+
+      // 挂载完毕后平滑淡出并移除启动 Loading 蒙层
+      const preloader = document.getElementById('app-preloader');
+      if (preloader) {
+        preloader.style.opacity = '0';
+        setTimeout(() => { if (preloader.parentNode) preloader.remove(); }, 250);
       }
     });
 
